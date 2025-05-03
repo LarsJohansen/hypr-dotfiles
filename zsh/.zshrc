@@ -62,3 +62,32 @@ gstash() {
   git stash list | fzf --preview "echo {} | cut -d: -f1 | xargs -I@ git stash show -p @" |
   cut -d: -f1 | xargs -r git stash apply
 }
+
+
+# Track explicitly installed packages
+export DOTFILES_LOG="$HOME/.dotfiles/pkglist.txt"
+export AUR_LOG="$HOME/.dotfiles/aurlist.txt"
+
+# Wrap pacman installs
+function pacman() {
+    if [[ "$1" == "-S" || "$1" == "-Syu" ]]; then
+        for pkg in "${@:2}"; do
+            if ! pacman -Qqe | grep -q "^$pkg$"; then
+                echo "$pkg" >> "$DOTFILES_LOG"
+            fi
+        done
+    fi
+    command pacman "$@"
+}
+
+# Wrap paru installs
+function paru() {
+    if [[ "$1" == "-S" ]]; then
+        for pkg in "${@:2}"; do
+            if pacman -Qm | grep -q "^$pkg"; then
+                echo "$pkg" >> "$AUR_LOG"
+            fi
+        done
+    fi
+    command paru "$@"
+}
