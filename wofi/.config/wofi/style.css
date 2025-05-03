@@ -1,0 +1,33 @@
+@import url("file:///home/lars/.config/wofi/catppuccin-macchiato.css");
+
+* {
+  font-family: JetBrainsMono Nerd Font, monospace;
+  font-size: 14px;
+  color: @text;
+  background-color: @base;
+  border: none;
+}
+
+window {
+  border: 2px solid @surface1;
+  background-color: @mantle;
+}
+
+#input {
+  margin: 10px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background-color: @surface0;
+  color: @text;
+  border: 1px solid @surface2;
+}
+
+#entry {
+  padding: 6px 10px;
+  border-radius: 4px;
+}
+
+#entry:selected {
+  background-color: @surface2;
+  color: @text;
+}

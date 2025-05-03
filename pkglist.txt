@@ -42,8 +42,8 @@ nano 8.4-1
 nemo 6.4.5-1
 neofetch 7.1.0-2
 neovim 0.11.1-2
-network-manager-applet 1.36.0-1
 networkmanager 1.52.0-1
+network-manager-applet 1.36.0-1
 nm-connection-editor 1.36.0-1
 noto-fonts 1:2025.05.01-1
 noto-fonts-cjk 20240730-1

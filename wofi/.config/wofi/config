@@ -1,0 +1,20 @@
+show = drun
+prompt = Search
+insensitive = true
+term = kitty
+allow_images = true
+drun-launch-desktop = true
+drun-use-desktop-cache = true
+
+# Appearance
+gtk-dark = true
+width = 600
+height = 400
+location = center
+columns = 1
+
+disable-history = false
+matching = fuzzy
+
+# Set style via CSS
+style = /home/lars/.config/wofi/style.css

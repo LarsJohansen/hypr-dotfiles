@@ -1,0 +1,52 @@
+* {
+  background-image: none;
+  box-shadow: none;
+  font-family: "Fira Sans", sans-serif;
+  font-size: 13px;
+}
+
+window {
+  background-color: rgba(36, 39, 58, 0.9); /* Catppuccin crust */
+}
+
+button {
+  min-width: 50px;      /* smaller width */
+  min-height: 50px;     /* smaller height */
+  margin: 8px;           /* slightly tighter spacing */
+  padding: 5px;          /* less internal padding */
+  border-radius: 6px;    /* optional: slightly less round */
+  border: 2px solid #c6a0f6;
+  color: #cad3f5;
+  background-color: #1e2030;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 50px;  /* icon size smaller to match button */
+}
+
+button:focus, button:hover {
+  background-color: #2e3146; /* surface1 */
+  border-color: #8aadf4; /* blue */
+  outline: none;
+}
+
+button label {
+  padding-top: 70px;
+  color: #cad3f5;
+}
+
+/* Button icons (assumes SVGs are in ~/.config/wlogout/) */
+#shutdown {
+  background-image: image(url("/home/lars/.config/wlogout/shutdown.svg"));
+}
+#reboot {
+  background-image: image(url("/home/lars/.config/wlogout/reboot.svg"));
+}
+#logout {
+  background-image: image(url("/home/lars/.config/wlogout/logout.svg"));
+}
+#suspend {
+  background-image: image(url("/home/lars/.config/wlogout/suspend.svg"));
+}
+#hibernate {
+  background-image: image(url("/home/lars/.config/wlogout/hibernate.svg"));
+}

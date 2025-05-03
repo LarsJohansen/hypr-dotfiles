@@ -1,0 +1,9 @@
+* {
+  background: #24273a; /* base */
+  foreground: #cad3f5; /* text */
+  border: #5b6078;
+  highlight: #8aadf4;  /* blue */
+  prompt: #f5a97f;     /* peach */
+  error: #ed8796;      /* red */
+  border-radius: 0;
+}

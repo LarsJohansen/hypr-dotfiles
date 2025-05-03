@@ -1,0 +1,31 @@
+/* Catppuccin Macchiato Theme */
+
+:root {
+  --background-color: #24273a;
+  --button-background: #1e2030;
+  --button-border: #c6a0f6;
+  --button-hover: #2e3146;
+  --text-color: #cad3f5;
+  --font-family: "Fira Sans", sans-serif;
+}
+
+body {
+  background-color: var(--background-color);
+  font-family: var(--font-family);
+  color: var(--text-color);
+}
+
+.button {
+  background-color: var(--button-background);
+  border: 2px solid var(--button-border);
+  border-radius: 12px;
+  padding: 10px;
+  margin: 10px;
+  color: var(--text-color);
+  transition: background-color 0.3s, border-color 0.3s;
+}
+
+.button:hover {
+  background-color: var(--button-hover);
+  border-color: var(--button-border);
+}

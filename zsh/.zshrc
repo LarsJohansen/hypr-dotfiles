@@ -66,7 +66,7 @@ gstash() {
 
 # Track explicitly installed packages
 export DOTFILES_LOG="$HOME/.dotfiles/pkglist.txt"
-export AUR_LOG="$HOME/.dotfiles/aurlist.txt"
+export AUR_LOG="$HOME/.dotfiles/aur-packages.txt"
 
 # Wrap pacman installs
 function pacman() {

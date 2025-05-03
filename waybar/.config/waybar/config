@@ -13,15 +13,15 @@
         "hyprland/window"
     ],
     "modules-right": [
-        "pulseaudio",
-        "network",
-        "cpu",
-        "memory",
-        "temperature",
-        "clock",
-        "tray",
-        "custom/power",
-        "keyboard-state"
+      "tray",
+      "keyboard-state",
+      "pulseaudio",
+      "network",
+      "cpu",
+      "memory",
+      "temperature",
+      "clock",
+      "custom/power"
     ],
     // Modules configuration
     "hyprland/workspaces": {
