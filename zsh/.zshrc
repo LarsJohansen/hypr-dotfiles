@@ -74,10 +74,12 @@ function pacman() {
         for pkg in "${@:2}"; do
             if ! pacman -Qqe | grep -q "^$pkg$"; then
                 echo "$pkg" >> "$DOTFILES_LOG"
+#                changed=1
             fi
         done
     fi
     command pacman "$@"
+#    [[ $changed -eq 1 ]] && aconfmgr save
 }
 
 # Wrap paru installs
@@ -86,8 +88,10 @@ function paru() {
         for pkg in "${@:2}"; do
             if pacman -Qm | grep -q "^$pkg"; then
                 echo "$pkg" >> "$AUR_LOG"
+#                changed=1
             fi
         done
     fi
     command paru "$@"
+#    [[ $changed -eq 1 ]] && aconfmgr save
 }

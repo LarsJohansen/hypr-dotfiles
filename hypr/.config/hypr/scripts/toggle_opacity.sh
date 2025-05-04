@@ -11,9 +11,13 @@ CLASS=$(hyprctl activewindow -j | jq -r '.class')
 STATE_FILE="$STATE_DIR/$CLASS"
 
 if [[ -f "$STATE_FILE" ]]; then
-  hyprctl keyword windowrule "opacity $OPAQUE,class:^($CLASS)$"
+  echo "Toggling opacity to $OPAQUE for $CLASS"
+  notify-send "Opacity" "Toggling opacity to $OPAQUE for $CLASS"
+  hyprctl keyword windowrule "opacity $OPAQUE override 0.85 override,class:^($CLASS)$"
   rm "$STATE_FILE"
 else
-  hyprctl keyword windowrule "opacity $TRANSPARENT,class:^($CLASS)$"
+  echo "Toggling opacity to $TRANSPARENT for $CLASS"
+  notify-send "Opacity" "Toggling opacity to $TRANSPARENT for $CLASS"
+  hyprctl keyword windowrule "opacity $TRANSPARENT override,class:^($CLASS)$"
   touch "$STATE_FILE"
 fi
