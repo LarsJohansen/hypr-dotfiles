@@ -34,6 +34,8 @@ alias ls='ls --color=auto'
 alias ll='ls -lAh'
 alias grep='rg'
 alias g='git'
+alias dotnet8="$HOME/.dotnet8/dotnet"
+alias dotnet8test='dotnet8 test --filter Category!=Integration'
 
 # ─[ Prompt Title ]─────────────────────────────────────
 precmd() { print -Pn "\e]0;%n@%m: %~\a" }
@@ -67,6 +69,7 @@ gstash() {
 # Track explicitly installed packages
 export DOTFILES_LOG="$HOME/.dotfiles/pkglist.txt"
 export AUR_LOG="$HOME/.dotfiles/aur-packages.txt"
+export XDG_CURRENT_DESKTOP=GNOME
 
 # Wrap pacman installs
 function pacman() {
@@ -95,3 +98,8 @@ function paru() {
     command paru "$@"
 #    [[ $changed -eq 1 ]] && aconfmgr save
 }
+# Source the secrets file if it exists
+[[ -f ~/.secrets/env.sh ]] && source ~/.secrets/env.sh
+
+# Created by `pipx` on 2025-05-08 21:14:40
+export PATH="$PATH:/home/lars/.local/bin"

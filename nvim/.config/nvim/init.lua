@@ -91,7 +91,7 @@ vim.g.mapleader = " "
 vim.g.maplocalleader = " "
 
 -- Set to true if you have a Nerd Font installed and selected in the terminal
-vim.g.have_nerd_font = false
+vim.g.have_nerd_font = true
 
 -- [[ Setting options ]]
 -- See `:help vim.opt`
@@ -179,6 +179,21 @@ vim.keymap.set("n", "<leader>q", vim.diagnostic.setloclist, { desc = "Open diagn
 -- or just use <C-\><C-n> to exit terminal mode
 vim.keymap.set("t", "<Esc><Esc>", "<C-\\><C-n>", { desc = "Exit terminal mode" })
 
+vim.api.nvim_create_autocmd("TermOpen", {
+	group = vim.api.nvim_create_augroup("custom-term-open", { clear = true }),
+	callback = function()
+		vim.opt.number = false
+		vim.opt.relativenumber = false
+	end,
+})
+
+vim.keymap.set("n", "<leader>st", function()
+	vim.cmd.split()
+	vim.cmd.term()
+	vim.cmd.wincmd("j")
+	vim.api.nvim_win_set_height(0, 10)
+end)
+
 -- TIP: Disable arrow keys in normal mode
 -- vim.keymap.set('n', '<left>', '<cmd>echo "Use h to move!!"<CR>')
 -- vim.keymap.set('n', '<right>', '<cmd>echo "Use l to move!!"<CR>')
@@ -194,6 +209,9 @@ vim.keymap.set("n", "<C-l>", "<C-w><C-l>", { desc = "Move focus to the right win
 vim.keymap.set("n", "<C-j>", "<C-w><C-j>", { desc = "Move focus to the lower window" })
 vim.keymap.set("n", "<C-k>", "<C-w><C-k>", { desc = "Move focus to the upper window" })
 
+-- Telescope git keymaps
+vim.keymap.set("n", "<leader>gc", "<cmd>Telescope git_commits<cr>", { desc = "Git [C]ommits (all)" })
+vim.keymap.set("n", "<leader>gb", "<cmd>Telescope git_bcommits<cr>", { desc = "Git [B]uffer commits" })
 -- NOTE: Some terminals have colliding keymaps or are not able to send distinct keycodes
 -- vim.keymap.set("n", "<C-S-h>", "<C-w>H", { desc = "Move window to the left" })
 -- vim.keymap.set("n", "<C-S-l>", "<C-w>L", { desc = "Move window to the right" })
@@ -287,6 +305,29 @@ require("lazy").setup({
 		},
 	},
 
+	{
+		"sindrets/diffview.nvim",
+		event = "VeryLazy",
+		dependencies = { "nvim-lua/plenary.nvim" },
+		config = function()
+			require("diffview").setup({
+				use_icons = true,
+				enhanced_diff_hl = true,
+				view = {
+					default = {
+						layout = "diff2_horizontal",
+					},
+				},
+			})
+			vim.keymap.set("n", "<leader>gd", "<cmd>DiffviewOpen<cr>", { desc = "Git [D]iff view" })
+			vim.keymap.set("n", "<leader>gh", "<cmd>DiffviewFileHistory %<cr>", { desc = "Git [H]istory (file)" })
+			vim.keymap.set("n", "<leader>gH", "<cmd>DiffviewFileHistory<cr>", { desc = "Git [H]istory (project)" })
+			vim.keymap.set("n", "<leader>gq", "<cmd>DiffviewClose<cr>", { desc = "[Q]uit Diffview" })
+		end,
+	},
+
+	-- NOTE: You can also use the `lazy` key to specify when a plugin should be loaded.
+
 	-- NOTE: Plugins can also be configured to run Lua code when they are loaded.
 	--
 	-- This is often very useful to both group configuration, as well as handle
@@ -353,6 +394,51 @@ require("lazy").setup({
 			},
 		},
 	},
+	{
+		"olimorris/codecompanion.nvim",
+		opts = {},
+		dependencies = {
+			"nvim-lua/plenary.nvim",
+			"nvim-telescope/telescope.nvim",
+			"nvim-treesitter/nvim-treesitter",
+		},
+		cmd = { "CodeCompanion" },
+		keys = {
+			{ "<leader>cx", "<cmd>CodeCompanion<cr>", desc = "Code Companion" },
+			{ "<leader>cc", "<cmd>CodeCompanion chat<cr>", desc = "CodeCompanion Chat" },
+			{ "<leader>cC", "<cmd>CodeCompanionClose<cr>", desc = "Code Companion Close" },
+			{ "<leader>cR", "<cmd>CodeCompanionRun<cr>", desc = "Code Companion Run" },
+			{ "<leader>cS", "<cmd>CodeCompanionStop<cr>", desc = "Code Companion Stop" },
+			{ "<leader>cE", "<cmd>CodeCompanionEdit<cr>", desc = "Code Companion Edit" },
+			{ "<leader>cF", "<cmd>CodeCompanionFormat<cr>", desc = "Code Companion Format" },
+			{ "<leader>cT", "<cmd>CodeCompanionTest<cr>", desc = "Code Companion Test" },
+			{ "<leader>cD", "<cmd>CodeCompanionDebug<cr>", desc = "Code Companion Debug" },
+			{ "<leader>ce", "<cmd>CodeCompanion explain<cr>", desc = "Explain code" },
+			{ "<leader>cr", "<cmd>CodeCompanion refactor<cr>", desc = "Refactor code" },
+			{ "<leader>ct", "<cmd>CodeCompanion tests<cr>", desc = "Generate tests" },
+			{ "<leader>cA", "<cmd>CodeCompanion select_adapter<cr>", desc = "Switch AI Adapter" },
+			{ "<leader>ca", "<cmd>CodeCompanionActions <cr>", desc = "Open action palette" },
+
+			config = function()
+				require("codecompanion").setup({
+					adapters = {
+						openai = {
+							api_key = os.getenv("OPENAI_API_KEY"),
+							model = "o3-mini-2025-01-31",
+						},
+						gemini = {
+							api_key = os.getenv("GEMINI_API_KEY"),
+							model = "Gemini-2.5-pro-exp-03-25",
+						},
+					},
+				})
+			end,
+			strategies = {
+				chat = { adapter = "openai" },
+				inline = { adapter = "openai" },
+			},
+		},
+	},
 
 	-- NOTE: Plugins can specify dependencies.
 	--
@@ -410,11 +496,23 @@ require("lazy").setup({
 				-- You can put your default mappings / updates / etc. in here
 				--  All the info you're looking for is in `:help telescope.setup()`
 				--
-				-- defaults = {
-				--   mappings = {
-				--     i = { ['<c-enter>'] = 'to_fuzzy_refine' },
-				--   },
-				-- },
+				defaults = {
+					vimgrep_arguments = {
+						"rg",
+						"--color=never",
+						"--no-heading",
+						"--with-filename",
+						"--line-number",
+						"--column",
+						"--smart-case",
+						"--follow",
+						"--hidden",
+						"--no-ignore",
+					},
+					--   mappings = {
+					--     i = { ['<c-enter>'] = 'to_fuzzy_refine' },
+					--   },
+				},
 				-- pickers = {}
 				extensions = {
 					["ui-select"] = {
@@ -505,6 +603,7 @@ require("lazy").setup({
 					-- Custom split mappings
 					vim.keymap.set("n", "v", api.node.open.vertical, opts("Open: Vertical Split"))
 					vim.keymap.set("n", "s", api.node.open.horizontal, opts("Open: Horizontal Split"))
+					vim.keymap.set("i", "<C-x>", "copilot#Dismiss()", { expr = true, silent = true })
 				end,
 			})
 
@@ -700,7 +799,10 @@ require("lazy").setup({
 							group = vim.api.nvim_create_augroup("kickstart-lsp-detach", { clear = true }),
 							callback = function(event2)
 								vim.lsp.buf.clear_references()
-								vim.api.nvim_clear_autocmds({ group = "kickstart-lsp-highlight", buffer = event2.buf })
+								vim.api.nvim_clear_autocmds({
+									group = "kickstart-lsp-highlight",
+									buffer = event2.buf,
+								})
 							end,
 						})
 					end
@@ -829,8 +931,7 @@ require("lazy").setup({
 			})
 		end,
 	},
-
-	{ -- Autoformat
+	{
 		"stevearc/conform.nvim",
 		event = { "BufWritePre" },
 		cmd = { "ConformInfo" },
@@ -838,7 +939,7 @@ require("lazy").setup({
 			{
 				"<leader>f",
 				function()
-					require("conform").format({ async = true, lsp_format = "fallback" })
+					require("conform").format({ async = true, lsp_fallback = true })
 				end,
 				mode = "",
 				desc = "[F]ormat buffer",
@@ -847,30 +948,30 @@ require("lazy").setup({
 		opts = {
 			notify_on_error = false,
 			format_on_save = function(bufnr)
-				-- Disable "format_on_save lsp_fallback" for languages that don't
-				-- have a well standardized coding style. You can add additional
-				-- languages here or re-enable it for the disabled ones.
 				local disable_filetypes = { c = true, cpp = true }
 				if disable_filetypes[vim.bo[bufnr].filetype] then
 					return nil
 				else
 					return {
 						timeout_ms = 500,
-						lsp_format = "fallback",
+						lsp_format = true,
 					}
 				end
 			end,
 			formatters_by_ft = {
 				lua = { "stylua" },
-				-- Conform can also run multiple formatters sequentially
-				-- python = { "isort", "black" },
-				--
-				-- You can use 'stop_after_first' to run the first available formatter from the list
-				-- javascript = { "prettierd", "prettier", stop_after_first = true },
+				markdown = { "mdformat" },
+			},
+			formatters = {
+				mdformat = {
+					command = "mdformat",
+					args = { "--wrap", "80", "$FILENAME" },
+					stdin = false,
+					meta = { inherited = false },
+				},
 			},
 		},
 	},
-
 	{ -- Autocompletion
 		"saghen/blink.cmp",
 		event = "VimEnter",
