@@ -103,3 +103,25 @@ function paru() {
 
 # Created by `pipx` on 2025-05-08 21:14:40
 export PATH="$PATH:/home/lars/.local/bin"
+
+# TheFuck
+eval $(thefuck --alias)
+
+## Tmux sessions
+workon() {
+  local name=$(basename "$PWD")
+  tmux has-session -t "$name" 2>/dev/null
+
+  if [ $? != 0 ]; then
+    tmux new-session -ds "$name" -c "$PWD" \; \
+      send-keys "nvim" C-m \; \
+      split-window -h -c "$PWD" \; \
+      send-keys "dotnet watch dotnet8test" C-m \; \
+      select-pane -t 1 \; \
+      split-window -v -c "$PWD" \; \
+      send-keys "clear && echo 'Git shell ready'" C-m \; \
+      select-pane -t 0
+  fi
+
+  tmux attach-session -t "$name"
+}

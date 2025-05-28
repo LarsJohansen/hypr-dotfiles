@@ -123,6 +123,15 @@ vim.opt.breakindent = true
 
 -- Save undo history
 vim.opt.undofile = true
+vim.opt.undodir = vim.fn.stdpath("cache") .. "/undo"
+-- Backup
+vim.opt.backup = true
+vim.opt.writebackup = true
+vim.opt.backupdir = vim.fn.stdpath("cache") .. "/backup"
+
+-- Swap files
+vim.opt.swapfile = true
+vim.opt.directory = vim.fn.stdpath("cache") .. "/swap"
 
 -- Case-insensitive searching UNLESS \C or one or more capital letters in the search term
 vim.opt.ignorecase = true
@@ -188,10 +197,10 @@ vim.api.nvim_create_autocmd("TermOpen", {
 })
 
 vim.keymap.set("n", "<leader>st", function()
-	vim.cmd.split()
+	vim.cmd.vsplit()
 	vim.cmd.term()
 	vim.cmd.wincmd("j")
-	vim.api.nvim_win_set_height(0, 10)
+	vim.api.nvim_win_set_width(0, 50)
 end)
 
 -- TIP: Disable arrow keys in normal mode
@@ -323,6 +332,13 @@ require("lazy").setup({
 			vim.keymap.set("n", "<leader>gh", "<cmd>DiffviewFileHistory %<cr>", { desc = "Git [H]istory (file)" })
 			vim.keymap.set("n", "<leader>gH", "<cmd>DiffviewFileHistory<cr>", { desc = "Git [H]istory (project)" })
 			vim.keymap.set("n", "<leader>gq", "<cmd>DiffviewClose<cr>", { desc = "[Q]uit Diffview" })
+		end,
+	},
+
+	{
+		"Pocco81/auto-save.nvim",
+		config = function()
+			require("auto-save").setup()
 		end,
 	},
 
@@ -612,10 +628,17 @@ require("lazy").setup({
 	},
 	{
 		"tpope/vim-fugitive",
-		cmd = { "Git", "G" },
+		cmd = { "Git", "G", "Gdiffsplit", "Gvdiffsplit" },
 		keys = {
 			{ "<leader>gs", ":Git<CR>", desc = "Git status" },
+			{ "<leader>gD", ":Gvdiffsplit!<CR>", desc = "Git diff split" },
 		},
+	},
+	{
+		"akinsho/git-conflict.nvim",
+		version = "*",
+		config = true,
+		event = "BufReadPre",
 	},
 	{
 		"iamcco/markdown-preview.nvim",
