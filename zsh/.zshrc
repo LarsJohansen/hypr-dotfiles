@@ -65,6 +65,8 @@ gstash() {
   cut -d: -f1 | xargs -r git stash apply
 }
 
+# - Git Autocomplete
+autoload -Uz compinit && compinit
 
 # Track explicitly installed packages
 export DOTFILES_LOG="$HOME/.dotfiles/pkglist.txt"
@@ -115,13 +117,23 @@ workon() {
   if [ $? != 0 ]; then
     tmux new-session -ds "$name" -c "$PWD" \; \
       send-keys "nvim" C-m \; \
-      split-window -h -c "$PWD" \; \
+      split-window -v -c "$PWD" \; \
       send-keys "dotnet watch dotnet8test" C-m \; \
       select-pane -t 1 \; \
-      split-window -v -c "$PWD" \; \
+      split-window -h -c "$PWD" \; \
       send-keys "clear && echo 'Git shell ready'" C-m \; \
       select-pane -t 0
   fi
 
   tmux attach-session -t "$name"
 }
+export PATH=~/.npm-global/bin:$PATH
+
+# Start SSH agent if not already running
+if [ -z "$SSH_AUTH_SOCK" ]; then
+  eval "$(ssh-agent -s)"
+  ssh-add ~/.ssh/id_rsa_sgdn 2>/dev/null
+fi
+export PATH="$HOME/.dotnet:$PATH"
+export DOTNET_ROOT="$HOME/.dotnet"
+

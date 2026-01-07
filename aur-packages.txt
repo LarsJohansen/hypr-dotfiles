@@ -9,3 +9,8 @@ sunshine 2025.122.141614-4
 swayosd-git 0.2.0.r1.gce1f34d-1
 teams-for-linux 2.0.11-1
 wlogout 1.2.2-0
+sunshine
+sunshine
+sunshine
+xpadneo-dkms
+xpadneo-dkms

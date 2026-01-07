@@ -84,6 +84,8 @@ I hope you enjoy your Neovim journey,
 P.S. You can delete this when you're done too. It's your config now! :)
 --]]
 
+vim.opt.termguicolors = true
+
 -- Set <space> as the leader key
 -- See `:help mapleader`
 --  NOTE: Must happen before plugins are loaded (otherwise wrong leader will be used)
@@ -218,6 +220,12 @@ vim.keymap.set("n", "<C-l>", "<C-w><C-l>", { desc = "Move focus to the right win
 vim.keymap.set("n", "<C-j>", "<C-w><C-j>", { desc = "Move focus to the lower window" })
 vim.keymap.set("n", "<C-k>", "<C-w><C-k>", { desc = "Move focus to the upper window" })
 
+-- Window resizing keybinds
+vim.keymap.set("n", "<C-Up>", ":resize +2<CR>", { desc = "Increase window height" })
+vim.keymap.set("n", "<C-Down>", ":resize -2<CR>", { desc = "Decrease window height" })
+vim.keymap.set("n", "<C-Left>", ":vertical resize -2<CR>", { desc = "Decrease window width" })
+vim.keymap.set("n", "<C-Right>", ":vertical resize +2<CR>", { desc = "Increase window width" })
+
 -- Telescope git keymaps
 vim.keymap.set("n", "<leader>gc", "<cmd>Telescope git_commits<cr>", { desc = "Git [C]ommits (all)" })
 vim.keymap.set("n", "<leader>gb", "<cmd>Telescope git_bcommits<cr>", { desc = "Git [B]uffer commits" })
@@ -313,6 +321,102 @@ require("lazy").setup({
 			},
 		},
 	},
+	{
+		"ThePrimeagen/harpoon",
+		branch = "harpoon2",
+		dependencies = { "nvim-lua/plenary.nvim" },
+		config = function()
+			local harpoon = require("harpoon")
+
+			harpoon:setup()
+
+			vim.keymap.set("n", "<leader>a", function()
+				harpoon:list():append()
+			end)
+			vim.keymap.set("n", "<leader>d", function()
+				harpoon.ui:toggle_quick_menu(harpoon:list())
+			end)
+
+			vim.keymap.set("n", "<leader>1", function()
+				harpoon:list():select(1)
+			end)
+			vim.keymap.set("n", "<leader>2", function()
+				harpoon:list():select(2)
+			end)
+			vim.keymap.set("n", "<leader>3", function()
+				harpoon:list():select(3)
+			end)
+			vim.keymap.set("n", "<leader>4", function()
+				harpoon:list():select(4)
+			end)
+		end,
+	},
+	-- plugins
+	{
+		"nvim-neotest/neotest",
+		dependencies = {
+			"nvim-lua/plenary.nvim",
+			"antoinemadec/FixCursorHold.nvim",
+			"nvim-treesitter/nvim-treesitter",
+			"Issafalcon/neotest-dotnet", -- C# adapter
+		},
+		config = function()
+			require("neotest").setup({
+				log_level = vim.log.levels.DEBUG, -- Enable debug logging
+				adapters = {
+					require("neotest-dotnet")({
+						-- Explicitly disable discovery_root to prevent context issues
+						discovery_root = "solution",
+					}),
+				},
+			})
+
+			-- keymaps for common test operations
+			local nt = require("neotest")
+			vim.keymap.set("n", "<leader>tr", function()
+				nt.run.run()
+			end, { desc = "[T]est [R]un nearest" })
+			vim.keymap.set("n", "<leader>tf", function()
+				nt.run.run(vim.fn.expand("%"))
+			end, { desc = "[T]est run [F]ile" })
+			vim.keymap.set("n", "<leader>ta", function()
+				nt.run.run(vim.loop.cwd())
+			end, { desc = "[T]est run [A]ll (cwd)" })
+			vim.keymap.set("n", "<leader>tl", function()
+				nt.run.run_last()
+			end, { desc = "[T]est run [L]ast" })
+			vim.keymap.set("n", "<leader>ts", nt.summary.toggle, { desc = "[T]est toggle [S]ummary" })
+			vim.keymap.set("n", "<leader>to", nt.output.open, { desc = "[T]est [O]utput" })
+			vim.keymap.set("n", "<leader>tO", function()
+				nt.output.open({ enter = true })
+			end, { desc = "[T]est [O]utput (focus)" })
+			vim.keymap.set("n", "<leader>tw", function()
+				nt.watch.toggle(vim.fn.expand("%"))
+			end, { desc = "[T]est [W]atch file" })
+			vim.keymap.set("n", "<leader>tx", function()
+				nt.run.stop()
+			end, { desc = "[T]est stop (e[X]it)" })
+			vim.keymap.set("n", "<leader>tp", function()
+				-- Print diagnostic info about test discovery
+				local tree = nt.state.positions(vim.fn.expand("%"))
+				if tree then
+					print("Tests found in file:")
+					for _, pos in tree:iter() do
+						print("  - " .. pos.name .. " (" .. pos.type .. ")")
+					end
+				else
+					print("No test tree found for current file")
+				end
+			end, { desc = "[T]est [P]rint discovered tests (debug)" })
+			vim.keymap.set("n", "]t", nt.jump.next, { desc = "Next failed test" })
+			vim.keymap.set("n", "[t", nt.jump.prev, { desc = "Previous failed test" })
+
+			-- Debug the nearest test (requires nvim-dap + netcoredbg or similar)
+			vim.keymap.set("n", "<leader>td", function()
+				nt.run.run({ strategy = "dap" })
+			end, { desc = "[T]est [D]ebug nearest" })
+		end,
+	},
 
 	{
 		"sindrets/diffview.nvim",
@@ -327,11 +431,29 @@ require("lazy").setup({
 						layout = "diff2_horizontal",
 					},
 				},
+				keymaps = {
+					view = {
+						{ "n", "gn", "]c", { desc = "Next [c]hange" } },
+						{ "n", "gp", "[c", { desc = "Previous [c]hange" } },
+					},
+					file_panel = {
+						{ "n", "gn", "<cmd>lua require'diffview.actions'.next_entry()<cr>", { desc = "Next file" } },
+						{
+							"n",
+							"gp",
+							"<cmd>lua require'diffview.actions'.prev_entry()<cr>",
+							{ desc = "Previous file" },
+						},
+					},
+				},
 			})
 			vim.keymap.set("n", "<leader>gd", "<cmd>DiffviewOpen<cr>", { desc = "Git [D]iff view" })
 			vim.keymap.set("n", "<leader>gh", "<cmd>DiffviewFileHistory %<cr>", { desc = "Git [H]istory (file)" })
 			vim.keymap.set("n", "<leader>gH", "<cmd>DiffviewFileHistory<cr>", { desc = "Git [H]istory (project)" })
 			vim.keymap.set("n", "<leader>gq", "<cmd>DiffviewClose<cr>", { desc = "[Q]uit Diffview" })
+			vim.keymap.set("n", "<leader>gm", "<cmd>DiffviewOpen main<cr>", { desc = "Compare branch with main" })
+			vim.keymap.set("n", "<leader>gr", "<cmd>DiffviewOpen main..HEAD<cr>", { desc = "Review branch changes" })
+			vim.keymap.set("n", "<leader>gl", "<cmd>DiffviewOpen HEAD~1<cr>", { desc = "Compare with last commit" })
 		end,
 	},
 
@@ -405,7 +527,7 @@ require("lazy").setup({
 			-- Document existing key chains
 			spec = {
 				{ "<leader>s", group = "[S]earch" },
-				{ "<leader>t", group = "[T]oggle" },
+				{ "<leader>t", group = "[T]est" },
 				{ "<leader>h", group = "Git [H]unk", mode = { "n", "v" } },
 			},
 		},
@@ -540,6 +662,7 @@ require("lazy").setup({
 			-- Enable Telescope extensions if they are installed
 			pcall(require("telescope").load_extension, "fzf")
 			pcall(require("telescope").load_extension, "ui-select")
+			pcall(require("telescope").load_extension, "harpoon")
 
 			-- See `:help telescope.builtin`
 			local builtin = require("telescope.builtin")
@@ -553,6 +676,9 @@ require("lazy").setup({
 			vim.keymap.set("n", "<leader>sr", builtin.resume, { desc = "[S]earch [R]esume" })
 			vim.keymap.set("n", "<leader>s.", builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
 			vim.keymap.set("n", "<leader><leader>", builtin.buffers, { desc = "[ ] Find existing buffers" })
+			vim.keymap.set("n", "<leader>so", function()
+				require("telescope").extensions.harpoon.marks()
+			end, { desc = "[S]earch Harpo[O]pened files" })
 
 			-- Slightly advanced example of overriding default behavior and theme
 			vim.keymap.set("n", "<leader>/", function()
@@ -588,12 +714,12 @@ require("lazy").setup({
 			vim.keymap.set("n", "<leader>e", ":NvimTreeToggle<CR>", { desc = "Toggle file [E]xplorer" })
 		end,
 	},
-	{
-		"github/copilot.vim",
-		version = "*",
-		dependencies = {},
-		config = function() end,
-	},
+	-- {
+	-- 	"github/copilot.vim",
+	-- 	version = "*",
+	-- 	dependencies = {},
+	-- 	config = function() end,
+	-- }
 	{
 		"nvim-tree/nvim-tree.lua",
 		version = "*",
@@ -753,12 +879,147 @@ require("lazy").setup({
 
 					-- Jump to the implementation of the word under your cursor.
 					--  Useful when your language has ways of declaring types without an actual implementation.
-					map("gri", require("telescope.builtin").lsp_implementations, "[G]oto [I]mplementation")
+					map("grI", require("telescope.builtin").lsp_implementations, "[G]oto [I]mplementation")
+
+					-- Jump to implementation in split
+					map("gri", function()
+						local ok, entry_display = pcall(require, "telescope.pickers.entry_display")
+						if not ok then
+							vim.notify("Could not load telescope.pickers.entry_display", vim.log.levels.ERROR)
+							return
+						end
+
+						local actions = require("telescope.actions")
+						local action_state = require("telescope.actions.state")
+						local pickers = require("telescope.pickers")
+						local finders = require("telescope.finders")
+						local conf = require("telescope.config").values
+
+						local win_count = vim.fn.winnr("$")
+						local params = vim.lsp.util.make_position_params()
+						local bufnr = vim.api.nvim_get_current_buf()
+
+						vim.lsp.buf_request(bufnr, "textDocument/implementation", params, function(err, result)
+							if err then
+								vim.notify("Error fetching implementation: " .. err.message, vim.log.levels.ERROR)
+								return
+							end
+
+							if not result or vim.tbl_isempty(result) then
+								vim.notify("No implementations found", vim.log.levels.WARN)
+								return
+							end
+
+							local results = vim.tbl_islist(result) and result or { result }
+
+							if #results == 1 then
+								local target = results[1]
+								local uri = target.uri or target.targetUri
+								local range = target.range or target.targetSelectionRange
+								local filename = vim.uri_to_fname(uri)
+								local row = range.start.line
+								local col = range.start.character
+
+								if win_count == 1 then
+									vim.cmd("vsplit")
+								else
+									vim.cmd("wincmd p")
+								end
+
+								vim.cmd("edit " .. filename)
+								vim.api.nvim_win_set_cursor(0, { row + 1, col })
+								return
+							end
+
+							-- create displayer safely
+							local displayer = entry_display.create({
+								separator = " ",
+								items = {
+									{ width = 100 },
+									{ remaining = true },
+								},
+							})
+
+							pickers
+								.new({}, {
+									prompt_title = "LSP Implementations",
+									finder = finders.new_table({
+										results = results,
+										entry_maker = function(entry)
+											local uri = entry.uri or entry.targetUri
+											local range = entry.range or entry.targetSelectionRange
+											local fname = vim.uri_to_fname(uri)
+											local lnum = range.start.line + 1
+											local col = range.start.character + 1
+
+											return {
+												value = entry,
+												display = function()
+													return displayer({
+														vim.fn.fnamemodify(fname, ":~:."),
+														string.format("line %d, col %d", lnum, col),
+													})
+												end,
+												ordinal = fname .. lnum .. col,
+												filename = fname,
+												lnum = lnum,
+												col = col,
+											}
+										end,
+									}),
+									sorter = conf.generic_sorter({}),
+									attach_mappings = function(prompt_bufnr, map)
+										actions.select_default:replace(function()
+											actions.close(prompt_bufnr)
+											local selection = action_state.get_selected_entry()
+											if not selection then
+												return
+											end
+
+											if win_count == 1 then
+												vim.cmd("vsplit")
+											else
+												vim.cmd("wincmd p")
+											end
+
+											vim.cmd("edit " .. selection.filename)
+											vim.api.nvim_win_set_cursor(0, { selection.lnum, selection.col - 1 })
+										end)
+										return true
+									end,
+								})
+								:find()
+						end)
+					end, "[G]oto [I]mplementation (split-aware + telescope)")
 
 					-- Jump to the definition of the word under your cursor.
 					--  This is where a variable was first declared, or where a function is defined, etc.
 					--  To jump back, press <C-t>.
 					map("grd", require("telescope.builtin").lsp_definitions, "[G]oto [D]efinition")
+
+					-- Jump to definition in vertical split
+					map("grs", function()
+						-- If only one window, create a split
+						if vim.fn.winnr("$") == 1 then
+							vim.cmd("vsplit")
+							require("telescope.builtin").lsp_definitions()
+						else
+							-- Store current position and buffer for LSP request
+							local current_buf = vim.api.nvim_get_current_buf()
+							local current_pos = vim.api.nvim_win_get_cursor(0)
+
+							-- Find a different window (not the current one)
+							local current_win = vim.fn.winnr()
+							local target_win = current_win == 1 and 2 or 1
+							vim.fn.win_gotoid(vim.fn.win_getid(target_win))
+
+							-- Make LSP request from the original buffer/position
+							require("telescope.builtin").lsp_definitions({
+								bufnr = current_buf,
+								cursor_position = current_pos,
+							})
+						end
+					end, "[G]oto definition [S]plit")
 
 					-- WARN: This is not Goto Definition, this is Goto Declaration.
 					--  For example, in C this would take you to the header.
@@ -971,7 +1232,7 @@ require("lazy").setup({
 		opts = {
 			notify_on_error = false,
 			format_on_save = function(bufnr)
-				local disable_filetypes = { c = true, cpp = true }
+				local disable_filetypes = { c = true, cpp = true, md = true }
 				if disable_filetypes[vim.bo[bufnr].filetype] then
 					return nil
 				else
@@ -983,15 +1244,15 @@ require("lazy").setup({
 			end,
 			formatters_by_ft = {
 				lua = { "stylua" },
-				markdown = { "mdformat" },
+				-- markdown = { "mdformat" },
 			},
 			formatters = {
-				mdformat = {
-					command = "mdformat",
-					args = { "--wrap", "80", "$FILENAME" },
-					stdin = false,
-					meta = { inherited = false },
-				},
+				-- mdformat = {
+				-- 	command = "mdformat",
+				-- 	args = { "--wrap", "80", "$FILENAME" },
+				-- 	stdin = false,
+				-- 	meta = { inherited = false },
+				-- },
 			},
 		},
 	},
@@ -1100,28 +1361,96 @@ require("lazy").setup({
 		--
 		-- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
 
-		"folke/tokyonight.nvim",
+		"darianmorat/gruvdark.nvim",
 		priority = 1000, -- Make sure to load this before all the other start plugins.
 		config = function()
 			---@diagnostic disable-next-line: missing-fields
-			require("tokyonight").setup({
-				styles = {
-					comments = { italic = false }, -- Disable italics in comments
-				},
-			})
+			-- require("tokyonight").setup({
+			-- 	styles = {
+			-- 		comments = { italic = false }, -- Disable italics in comments
+			-- 	},
+			-- })
 			-- Load the colorscheme here.
 			-- Like many other themes, this one has different styles, and you could load
 			-- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-			vim.cmd.colorscheme("tokyonight-night")
+			vim.cmd.colorscheme("gruvdark")
+			local bg = "#0A0A0A"
+			vim.api.nvim_set_hl(0, "Normal", { bg = bg })
+			vim.api.nvim_set_hl(0, "NormalNC", { bg = "#121111" })
+			vim.api.nvim_set_hl(0, "NormalFloat", { bg = bg })
+			vim.api.nvim_set_hl(0, "SignColumn", { bg = bg })
 		end,
 	},
 
+	--
+	-- Catppuccin theme
+	-- 	"catppuccin/nvim",
+	-- 	name = "catppuccin",
+	-- 	priority = 1000,
+	-- 	config = function()
+	-- 		require("catppuccin").setup({
+	-- 			integrations = {
+	-- 				diffview = true,
+	-- 				gitsigns = true,
+	-- 			},
+	-- 		})
+	-- 		vim.cmd.colorscheme("catppuccin-mocha")
+	-- 	end,
+	-- },
 	-- Highlight todo, notes, etc in comments
 	{
 		"folke/todo-comments.nvim",
 		event = "VimEnter",
 		dependencies = { "nvim-lua/plenary.nvim" },
 		opts = { signs = false },
+	},
+
+	{
+		"folke/flash.nvim",
+		event = "VeryLazy",
+		opts = {},
+		keys = {
+			{
+				"s",
+				mode = { "n", "x", "o" },
+				function()
+					require("flash").jump()
+				end,
+				desc = "Flash",
+			},
+			{
+				"S",
+				mode = { "n", "o", "x" },
+				function()
+					require("flash").treesitter()
+				end,
+				desc = "Flash Treesitter",
+			},
+			{
+				"r",
+				mode = "o",
+				function()
+					require("flash").remote()
+				end,
+				desc = "Remote Flash",
+			},
+			{
+				"R",
+				mode = { "o", "x" },
+				function()
+					require("flash").treesitter_search()
+				end,
+				desc = "Treesitter Search",
+			},
+			{
+				"<c-s>",
+				mode = { "c" },
+				function()
+					require("flash").toggle()
+				end,
+				desc = "Toggle Flash Search",
+			},
+		},
 	},
 
 	{ -- Collection of various small independent plugins/modules
@@ -1272,6 +1601,25 @@ require("lazy").setup({
 			lazy = "💤 ",
 		},
 	},
+})
+
+-- Enhanced diff highlighting for better visibility
+vim.api.nvim_create_autocmd("ColorScheme", {
+	callback = function()
+		-- Make diff changes more visible
+		vim.cmd([[
+			highlight DiffAdd guibg=#2d5a2d guifg=#a7d9a7
+			highlight DiffDelete guibg=#5a2d2d guifg=#d9a7a7
+			highlight DiffChange guibg=#5a4d2d guifg=#d9c7a7
+			highlight DiffText guibg=#7a5d2d guifg=#f0d090 gui=bold
+			
+			" Diffview specific highlights
+			highlight DiffviewDiffAdd guibg=#2d5a2d guifg=#a7d9a7
+			highlight DiffviewDiffDelete guibg=#5a2d2d guifg=#d9a7a7
+			highlight DiffviewDiffChange guibg=#5a4d2d guifg=#d9c7a7
+			highlight DiffviewDiffText guibg=#7a5d2d guifg=#f0d090 gui=bold
+		]])
+	end,
 })
 
 -- The line beneath this is called `modeline`. See `:help modeline`
