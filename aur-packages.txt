@@ -5,12 +5,11 @@ microsoft-edge-stable-bin 136.0.3240.50-1
 paru 2.0.4-1
 paru-debug 2.0.4-1
 slack-desktop-wayland 4.43.51-1
+sunshine
 sunshine 2025.122.141614-4
 swayosd-git 0.2.0.r1.gce1f34d-1
 teams-for-linux 2.0.11-1
 wlogout 1.2.2-0
-sunshine
-sunshine
-sunshine
 xpadneo-dkms
-xpadneo-dkms
+informant
+informant

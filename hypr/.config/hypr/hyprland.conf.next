@@ -57,13 +57,12 @@ $dmenu = wofi --show run --style /home/lars/.config/wofi/style.css
 exec-once = waybar
 exec-once = swayosd-server
 exec-once = hyprpaper
-exec-once = ~/.config/hypr/scripts/wallrotate.sh &
+# exec-once = ~/.config/hypr/scripts/wallrotate.sh &
 exec-once = swayosd-server
 exec-once = wl-paste --watch cliphist store
 exec-once = systemctl --user restart sunshine
 exec-once = /usr/bin/gnome-keyring-daemon --start --components=pkcs11,secrets,ssh,gpg > /run/user/1000/keyring.env
 exec-once = bash -c 'source /run/user/1000/keyring.env && export SSH_AUTH_SOCK'
-exec-once = dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP
 
 
 #############################
@@ -98,8 +97,8 @@ decoration {
     rounding = 10
     rounding_power = 2
 
-    # active_opacity = 1
-    # inactive_opacity = 0.6
+    active_opacity = 1
+    inactive_opacity = 0.6
 
     shadow {
         enabled = true

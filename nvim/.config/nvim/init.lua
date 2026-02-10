@@ -116,9 +116,20 @@ vim.opt.showmode = false
 --  Schedule the setting after `UiEnter` because it can increase startup-time.
 --  Remove this option if you want your OS clipboard to remain independent.
 --  See `:help 'clipboard'`
-vim.schedule(function()
-	vim.opt.clipboard = "unnamedplus"
-end)
+-- vim.schedule(function()
+-- 	vim.opt.clipboard = "unnamedplus"
+-- end)
+
+-- Keymaps for non-syncing clipboard
+--  System clipboard (explicit)
+vim.keymap.set({ "n", "v" }, "<leader>y", '"+y', { desc = "Yank to system clipboard" })
+vim.keymap.set("n", "<leader>Y", '"+yy', { desc = "Yank line to system clipboard" })
+vim.keymap.set({ "n", "v" }, "<leader>p", '"+p', { desc = "Paste from system clipboard" })
+vim.keymap.set({ "n", "v" }, "<leader>P", '"+P', { desc = "Paste before from system clipboard" })
+
+--  Paste last yank, ignoring deletes
+vim.keymap.set("n", "<leader>0", '"0p', { desc = "Paste last yank (register 0)" })
+vim.keymap.set("n", "<leader>)", '"0P', { desc = "Paste last yank before cursor" })
 
 -- Enable break indent
 vim.opt.breakindent = true
@@ -181,6 +192,10 @@ vim.keymap.set("n", "<Esc>", "<cmd>nohlsearch<CR>")
 
 -- Diagnostic keymaps
 vim.keymap.set("n", "<leader>q", vim.diagnostic.setloclist, { desc = "Open diagnostic [Q]uickfix list" })
+vim.keymap.set("n", "<leader>tv", function()
+	local current = vim.diagnostic.config().virtual_text
+	vim.diagnostic.config({ virtual_text = not current })
+end, { desc = "[T]oggle [V]irtual text" })
 
 -- Exit terminal mode in the builtin terminal with a shortcut that is a bit easier
 -- for people to discover. Otherwise, you normally need to press <C-\><C-n>, which
@@ -211,6 +226,8 @@ end)
 -- vim.keymap.set('n', '<up>', '<cmd>echo "Use k to move!!"<CR>')
 -- vim.keymap.set('n', '<down>', '<cmd>echo "Use j to move!!"<CR>')
 
+require("custom.methodmove").setup()
+
 -- Keybinds to make split navigation easier.
 --  Use CTRL+<hjkl> to switch between windows
 --
@@ -236,16 +253,17 @@ vim.keymap.set("n", "<leader>gb", "<cmd>Telescope git_bcommits<cr>", { desc = "G
 -- vim.keymap.set("n", "<C-S-k>", "<C-w>K", { desc = "Move window to the upper" })
 --
 
-vim.keymap.set("i", "<CR>", function()
-	local line = vim.api.nvim_get_current_line()
-	local col = vim.fn.col(".") - 1
-	if col > 0 and line:sub(col, col) == "{" then
-		return "<CR><CR><Up><Tab>"
-	else
-		return "<CR>"
-	end
-end, { expr = true, noremap = true })
-
+-- Custom mapping for brackets. Disabled for now to see if autopairs does what I want
+-- vim.keymap.set("i", "<CR>", function()
+-- 	local line = vim.api.nvim_get_current_line()
+-- 	local col = vim.fn.col(".") - 1
+-- 	if col > 0 and line:sub(col, col) == "{" then
+-- 		return "<CR><CR><Up><Tab>"
+-- 	else
+-- 		return "<CR>"
+-- 	end
+-- end, { expr = true, noremap = true })
+--
 -- [[ Basic Autocommands ]]
 --  See `:help lua-guide-autocommands`
 
@@ -457,12 +475,12 @@ require("lazy").setup({
 		end,
 	},
 
-	{
-		"Pocco81/auto-save.nvim",
-		config = function()
-			require("auto-save").setup()
-		end,
-	},
+	-- {
+	-- 	"Pocco81/auto-save.nvim",
+	-- 	config = function()
+	-- 		require("auto-save").setup()
+	-- 	end,
+	-- },
 
 	-- NOTE: You can also use the `lazy` key to specify when a plugin should be loaded.
 
@@ -529,54 +547,56 @@ require("lazy").setup({
 				{ "<leader>s", group = "[S]earch" },
 				{ "<leader>t", group = "[T]est" },
 				{ "<leader>h", group = "Git [H]unk", mode = { "n", "v" } },
+				{ "<leader>m", group = "[M]ove" },
+				{ "<leader>c", group = "[C]ode" }, -- if not already used by codecompanion
 			},
 		},
 	},
-	{
-		"olimorris/codecompanion.nvim",
-		opts = {},
-		dependencies = {
-			"nvim-lua/plenary.nvim",
-			"nvim-telescope/telescope.nvim",
-			"nvim-treesitter/nvim-treesitter",
-		},
-		cmd = { "CodeCompanion" },
-		keys = {
-			{ "<leader>cx", "<cmd>CodeCompanion<cr>", desc = "Code Companion" },
-			{ "<leader>cc", "<cmd>CodeCompanion chat<cr>", desc = "CodeCompanion Chat" },
-			{ "<leader>cC", "<cmd>CodeCompanionClose<cr>", desc = "Code Companion Close" },
-			{ "<leader>cR", "<cmd>CodeCompanionRun<cr>", desc = "Code Companion Run" },
-			{ "<leader>cS", "<cmd>CodeCompanionStop<cr>", desc = "Code Companion Stop" },
-			{ "<leader>cE", "<cmd>CodeCompanionEdit<cr>", desc = "Code Companion Edit" },
-			{ "<leader>cF", "<cmd>CodeCompanionFormat<cr>", desc = "Code Companion Format" },
-			{ "<leader>cT", "<cmd>CodeCompanionTest<cr>", desc = "Code Companion Test" },
-			{ "<leader>cD", "<cmd>CodeCompanionDebug<cr>", desc = "Code Companion Debug" },
-			{ "<leader>ce", "<cmd>CodeCompanion explain<cr>", desc = "Explain code" },
-			{ "<leader>cr", "<cmd>CodeCompanion refactor<cr>", desc = "Refactor code" },
-			{ "<leader>ct", "<cmd>CodeCompanion tests<cr>", desc = "Generate tests" },
-			{ "<leader>cA", "<cmd>CodeCompanion select_adapter<cr>", desc = "Switch AI Adapter" },
-			{ "<leader>ca", "<cmd>CodeCompanionActions <cr>", desc = "Open action palette" },
-
-			config = function()
-				require("codecompanion").setup({
-					adapters = {
-						openai = {
-							api_key = os.getenv("OPENAI_API_KEY"),
-							model = "o3-mini-2025-01-31",
-						},
-						gemini = {
-							api_key = os.getenv("GEMINI_API_KEY"),
-							model = "Gemini-2.5-pro-exp-03-25",
-						},
-					},
-				})
-			end,
-			strategies = {
-				chat = { adapter = "openai" },
-				inline = { adapter = "openai" },
-			},
-		},
-	},
+	-- {
+	-- 	"olimorris/codecompanion.nvim",
+	-- 	opts = {},
+	-- 	dependencies = {
+	-- 		"nvim-lua/plenary.nvim",
+	-- 		"nvim-telescope/telescope.nvim",
+	-- 		"nvim-treesitter/nvim-treesitter",
+	-- 	},
+	-- 	cmd = { "CodeCompanion" },
+	-- 	keys = {
+	-- 		{ "<leader>cx", "<cmd>CodeCompanion<cr>", desc = "Code Companion" },
+	-- 		{ "<leader>cc", "<cmd>CodeCompanion chat<cr>", desc = "CodeCompanion Chat" },
+	-- 		{ "<leader>cC", "<cmd>CodeCompanionClose<cr>", desc = "Code Companion Close" },
+	-- 		{ "<leader>cR", "<cmd>CodeCompanionRun<cr>", desc = "Code Companion Run" },
+	-- 		{ "<leader>cS", "<cmd>CodeCompanionStop<cr>", desc = "Code Companion Stop" },
+	-- 		{ "<leader>cE", "<cmd>CodeCompanionEdit<cr>", desc = "Code Companion Edit" },
+	-- 		{ "<leader>cF", "<cmd>CodeCompanionFormat<cr>", desc = "Code Companion Format" },
+	-- 		{ "<leader>cT", "<cmd>CodeCompanionTest<cr>", desc = "Code Companion Test" },
+	-- 		{ "<leader>cD", "<cmd>CodeCompanionDebug<cr>", desc = "Code Companion Debug" },
+	-- 		{ "<leader>ce", "<cmd>CodeCompanion explain<cr>", desc = "Explain code" },
+	-- 		{ "<leader>cr", "<cmd>CodeCompanion refactor<cr>", desc = "Refactor code" },
+	-- 		{ "<leader>ct", "<cmd>CodeCompanion tests<cr>", desc = "Generate tests" },
+	-- 		{ "<leader>cA", "<cmd>CodeCompanion select_adapter<cr>", desc = "Switch AI Adapter" },
+	-- 		{ "<leader>ca", "<cmd>CodeCompanionActions <cr>", desc = "Open action palette" },
+	--
+	-- 		config = function()
+	-- 			require("codecompanion").setup({
+	-- 				adapters = {
+	-- 					openai = {
+	-- 						api_key = os.getenv("OPENAI_API_KEY"),
+	-- 						model = "o3-mini-2025-01-31",
+	-- 					},
+	-- 					gemini = {
+	-- 						api_key = os.getenv("GEMINI_API_KEY"),
+	-- 						model = "Gemini-2.5-pro-exp-03-25",
+	-- 					},
+	-- 				},
+	-- 			})
+	-- 		end,
+	-- 		strategies = {
+	-- 			chat = { adapter = "openai" },
+	-- 			inline = { adapter = "openai" },
+	-- 		},
+	-- 	},
+	-- },
 
 	-- NOTE: Plugins can specify dependencies.
 	--
@@ -705,15 +725,6 @@ require("lazy").setup({
 		end,
 	},
 
-	{
-		"nvim-tree/nvim-tree.lua",
-		version = "*",
-		dependencies = { "nvim-tree/nvim-web-devicons" },
-		config = function()
-			require("nvim-tree").setup({})
-			vim.keymap.set("n", "<leader>e", ":NvimTreeToggle<CR>", { desc = "Toggle file [E]xplorer" })
-		end,
-	},
 	-- {
 	-- 	"github/copilot.vim",
 	-- 	version = "*",
@@ -1524,14 +1535,23 @@ require("lazy").setup({
 				--  the list of additional_vim_regex_highlighting and disabled languages for indent.
 				additional_vim_regex_highlighting = { "ruby" },
 			},
+			incremental_selection = {
+				enable = true,
+				keymaps = {
+					init_selection = "<leader>v",
+					node_incremental = "<leader>vn",
+					scope_incremental = "<leader>vs",
+					node_decremental = "<leader>vm",
+				},
+			},
 			indent = { enable = true, disable = { "ruby" } },
 			textobjects = {
 				select = {
 					enable = true,
 					lookahead = true,
 					keymaps = {
-						["am"] = "@function.outer", -- around method
-						["im"] = "@function.inner", -- inside method
+						["am"] = "@function.outer",
+						["im"] = "@function.inner",
 						["ac"] = "@class.outer",
 						["ic"] = "@class.inner",
 						["ai"] = "@conditional.outer",
@@ -1540,8 +1560,28 @@ require("lazy").setup({
 						["il"] = "@loop.inner",
 						["ab"] = "@block.outer",
 						["ib"] = "@block.inner",
-						["ao"] = "@initializer.outer", -- Around initializer
-						["io"] = "@initializer.inner", -- Inside initializer
+						["ao"] = "@initializer.outer",
+						["io"] = "@initializer.inner",
+					},
+				},
+				move = {
+					enable = true,
+					set_jumps = true,
+					goto_next_start = {
+						["<leader>mn"] = "@function.outer",
+						["<leader>cn"] = "@class.outer",
+					},
+					goto_previous_start = {
+						["<leader>mp"] = "@function.outer",
+						["<leader>cp"] = "@class.outer",
+					},
+					goto_next_end = {
+						["<leader>mN"] = "@function.outer",
+						["<leader>cN"] = "@class.outer",
+					},
+					goto_previous_end = {
+						["<leader>mP"] = "@function.outer",
+						["<leader>cP"] = "@class.outer",
 					},
 				},
 			},

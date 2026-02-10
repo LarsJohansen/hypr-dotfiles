@@ -69,6 +69,7 @@ starship 1.23.0-1
 steam 1.0.0.82-2
 stow 2.4.1-1
 sudo 1.9.16.p2-2
+sunshine
 sunshine 2025.122.141614-4
 swaybg 1.2.1-1
 swaylock 1.8.2-1
@@ -95,4 +96,3 @@ zoxide 0.9.7-1
 zsh 5.9-5
 zsh-autosuggestions 0.7.1-1
 zsh-syntax-highlighting 0.8.0-1
-sunshine

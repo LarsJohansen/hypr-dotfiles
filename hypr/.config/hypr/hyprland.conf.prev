@@ -63,7 +63,6 @@ exec-once = wl-paste --watch cliphist store
 exec-once = systemctl --user restart sunshine
 exec-once = /usr/bin/gnome-keyring-daemon --start --components=pkcs11,secrets,ssh,gpg > /run/user/1000/keyring.env
 exec-once = bash -c 'source /run/user/1000/keyring.env && export SSH_AUTH_SOCK'
-exec-once = dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP
 
 
 #############################
@@ -98,8 +97,8 @@ decoration {
     rounding = 10
     rounding_power = 2
 
-    # active_opacity = 1
-    # inactive_opacity = 0.6
+    active_opacity = 1
+    inactive_opacity = 0.6
 
     shadow {
         enabled = true
@@ -344,25 +343,25 @@ workspace=9,monitor:HDMI-A-1,persistent:true
 workspace=10,monitor:HDMI-A-1,persistent:true
 
 # Example windowrule
-# windowrule = match:class ^(kitty)$, match:title ^(kitty)$, float
-windowrule = match:title ^(nvim)$, match:class ^(kitty)$, opacity 1.0 override 0.85 override
+# windowrule = float,class:^(kitty)$,title:^(kitty)$
+windowrule = opacity 1.0 override 0.85 override, title:^(nvim)$, class:^(kitty)$
 
 # Obsidian
-windowrule = match:class ^(obsidian)$, float 1
-windowrule = match:class ^(obsidian)$, size 1200 800
-# windowrule = match:class ^(obsidian)$, center
+windowrule = float, class:^(obsidian)$
+windowrule = size 1200 800, class:^(obsidian)$
+# windowrule = center, class:^(obsidian)$
 
 # Zenity
-windowrule = match:class ^(zenity)$, float 1
-windowrule = match:class ^(zenity)$, size 400 200
-windowrule = match:class ^(zenity)$, center 1
+windowrule = float, class:^(zenity)$
+windowrule = size 400 200, class:^(zenity)$
+windowrule = center, class:^(zenity)$
 
 # Ignore maximize requests from apps. You'll probably like this.
-windowrule = match:class .*, suppress_event maximize
+windowrule = suppressevent maximize, class:.*
 
 # Fix some dragging issues with XWayland
-windowrule = match:class ^$, match:title ^$, match:xwayland 1, match:float 1, match:fullscreen 0, match:pin 0, no_focus 1
+windowrule = nofocus,class:^$,title:^$,xwayland:1,floating:1,fullscreen:0,pinned:0
 
 # floating scratchpad notes
-windowrule = match:class ^(note_scratch)$, float 1
-windowrule = match:class ^(note_scratch)$, workspace special:notes
+windowrule = float,class:^(note_scratch)$
+windowrule = workspace special:notes,class:^(note_scratch)$

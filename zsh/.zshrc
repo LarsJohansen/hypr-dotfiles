@@ -36,6 +36,7 @@ alias grep='rg'
 alias g='git'
 alias dotnet8="$HOME/.dotnet8/dotnet"
 alias dotnet8test='dotnet8 test --filter Category!=Integration'
+alias dotnet9="DOTNET_ROOT=$HOME/.dotnet $HOME/.dotnet/dotnet"
 
 # ─[ Prompt Title ]─────────────────────────────────────
 precmd() { print -Pn "\e]0;%n@%m: %~\a" }
@@ -134,6 +135,8 @@ if [ -z "$SSH_AUTH_SOCK" ]; then
   eval "$(ssh-agent -s)"
   ssh-add ~/.ssh/id_rsa_sgdn 2>/dev/null
 fi
-export PATH="$HOME/.dotnet:$PATH"
-export DOTNET_ROOT="$HOME/.dotnet"
+# Commented out to use system dotnet (version 10) as default
+# Use dotnet8 and dotnet9 aliases for older versions
+# export PATH="$HOME/.dotnet:$PATH"
+# export DOTNET_ROOT="$HOME/.dotnet"
 
