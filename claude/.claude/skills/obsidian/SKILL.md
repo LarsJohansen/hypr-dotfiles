@@ -9,8 +9,15 @@ description: Standards for reading from and writing to Lars's Obsidian vault
 Defines standards for all agents to read from and write to Lars's Obsidian vault, ensuring consistent structure, naming, and cross-referencing.
 
 ## Vault Location
-- **Vault Root**: `/home/lars/Documents/Productivity`
-- **Projects Base**: `/home/lars/Documents/Productivity/02 Projects`
+
+Paths differ by machine. Detect using `uname -s`:
+
+| Machine | `uname -s` | Vault Root | Projects Base |
+|---------|-----------|------------|---------------|
+| Linux   | `Linux`   | `/home/lars/Documents/Productivity` | `/home/lars/Documents/Productivity/02 Projects` |
+| macOS   | `Darwin`  | `/Users/larsj/Productivity` | `/Users/larsj/Productivity/02 Projects` |
+
+**Before any file operation**, run `uname -s` to determine the correct base path, then use it for all subsequent paths in the session.
 
 ## Project Structure
 Projects are organized by category:
@@ -412,11 +419,14 @@ Brief description of what this project is.
 
 ### Finding a Project
 ```bash
+# Detect machine first
+PROJECTS_BASE=$([ "$(uname -s)" = "Darwin" ] && echo "/Users/larsj/Productivity/02 Projects" || echo "/home/lars/Documents/Productivity/02 Projects")
+
 # If project name known
-cd "/home/lars/Documents/Productivity/02 Projects/[Category]/[Project Name]"
+cd "$PROJECTS_BASE/[Category]/[Project Name]"
 
 # If searching for project
-find "/home/lars/Documents/Productivity/02 Projects" -name "*project-name*" -type d
+find "$PROJECTS_BASE" -name "*project-name*" -type d
 ```
 
 ### Creating Folder Structure

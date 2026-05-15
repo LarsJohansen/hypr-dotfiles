@@ -230,12 +230,8 @@ require("custom.methodmove").setup()
 
 -- Keybinds to make split navigation easier.
 --  Use CTRL+<hjkl> to switch between windows
---
+--  Handled by vim-tmux-navigator plugin for seamless tmux integration
 --  See `:help wincmd` for a list of all window commands
-vim.keymap.set("n", "<C-h>", "<C-w><C-h>", { desc = "Move focus to the left window" })
-vim.keymap.set("n", "<C-l>", "<C-w><C-l>", { desc = "Move focus to the right window" })
-vim.keymap.set("n", "<C-j>", "<C-w><C-j>", { desc = "Move focus to the lower window" })
-vim.keymap.set("n", "<C-k>", "<C-w><C-k>", { desc = "Move focus to the upper window" })
 
 -- Window resizing keybinds
 vim.keymap.set("n", "<C-Up>", ":resize +2<CR>", { desc = "Increase window height" })
@@ -304,6 +300,9 @@ vim.opt.rtp:prepend(lazypath)
 require("lazy").setup({
 	-- NOTE: Plugins can be added with a link (or for a github repo: 'owner/repo' link).
 	"tpope/vim-sleuth", -- Detect tabstop and shiftwidth automatically
+
+	-- Seamless tmux + vim navigation
+	"christoomey/vim-tmux-navigator",
 
 	-- NOTE: Plugins can also be added by using a table,
 	-- with the first argument being the link and the following
@@ -1661,6 +1660,11 @@ vim.api.nvim_create_autocmd("ColorScheme", {
 		]])
 	end,
 })
+
+-- vim-tmux-navigator configuration
+vim.g.tmux_navigator_no_mappings = 0
+vim.g.tmux_navigator_save_on_switch = 2
+vim.g.tmux_navigator_disable_when_zoomed = 1
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
