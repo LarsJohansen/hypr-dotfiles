@@ -1,0 +1,17 @@
+# Split navigation on Cmd so Ctrl+hjkl passes through to tmux/nvim
+# (vim-tmux-navigator handles seamless pane nav inside the terminal).
+keybind = cmd+h=goto_split:left
+keybind = cmd+j=goto_split:down
+keybind = cmd+k=goto_split:up
+keybind = cmd+l=goto_split:right
+
+keybind = cmd+shift+h=resize_split:left,20
+keybind = cmd+shift+j=resize_split:down,20
+keybind = cmd+shift+k=resize_split:up,20
+keybind = cmd+shift+l=resize_split:right,20
+
+keybind = cmd+shift+z=toggle_split_zoom
+
+# Auto-install ghostty terminfo on remote hosts over SSH (fixes "xterm-ghostty:
+# unknown terminal type" + doubled characters). ssh-env is the fallback.
+shell-integration-features = ssh-env,ssh-terminfo

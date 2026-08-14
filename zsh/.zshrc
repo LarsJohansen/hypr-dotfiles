@@ -15,6 +15,7 @@ setopt append_history
 setopt hist_ignore_dups
 setopt share_history
 
+export EDITOR="nvim"
 
 if [[ -x /opt/homebrew/bin/brew ]]; then
   eval "$(/opt/homebrew/bin/brew shellenv)"
@@ -33,14 +34,6 @@ source_if_exists() {
   [[ -f "$1" ]] && source "$1"
 }
 
-# --- zscaler
-export NODE_EXTRA_CA_CERTS="$HOME/.certs/zscaler.pem"
-
-# --- zsh-autosuggestions
-source_if_exists /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh
-source_if_exists /usr/local/share/zsh-autosuggestions/zsh-autosuggestions.zsh
-source_if_exists /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
-
 # ─[ FZF Setup ]────────────────────────────────────────
 if [[ -f ~/.fzf.zsh ]]; then
   source ~/.fzf.zsh
@@ -57,10 +50,6 @@ fi
 export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
 export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
 export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border"
-
-export GITHUB_TOKEN=$(security find-generic-password -a "$USER" -s "github_pat_aidn" -w 2>/dev/null)
-export NODE_AUTH_TOKEN="$GITHUB_TOKEN"
-export NuGetPackageSourceCredentials_github_aidnas="Username=AidnLars;Password=$GITHUB_TOKEN"
 
 # ─[ Aliases ]──────────────────────────────────────────
 alias cat='bat'
@@ -154,6 +143,8 @@ if command -v thefuck >/dev/null 2>&1; then
   eval "$(thefuck --alias)"
 fi
 
+bindkey -s '^f' 'tmux-sessionizer\n'
+
 export PATH="$PATH:$HOME/.local/bin"
 ## Tmux sessions
 workon() {
@@ -173,20 +164,52 @@ workon() {
 
   tmux attach-session -t "$name"
 }
-export PATH=~/.npm-global/bin:$PATH
 
-# --- zsh-syntax-highlighting (must be sourced near the end of .zshrc)
-source_if_exists /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-source_if_exists /usr/local/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-source_if_exists /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+tmux-kill() {
+  tmux ls | fzf --prompt="kill session: " | cut -d: -f1 | xargs tmux kill-session -t
+}
+
+# ─[ Zinit Plugin Manager ]─────────────────────────────
+if [[ ! -f $HOME/.local/share/zinit/zinit.git/zinit.zsh ]]; then
+    print -P "%F{33} %F{220}Installing %F{33}ZDHARMA-CONTINUUM%F{220} Initiative Plugin Manager (%F{33}zdharma-continuum/zinit%F{220})…%f"
+    command mkdir -p "$HOME/.local/share/zinit" && command chmod g-rwX "$HOME/.local/share/zinit"
+    command git clone https://github.com/zdharma-continuum/zinit "$HOME/.local/share/zinit/zinit.git" && \
+        print -P "%F{33} %F{34}Installation successful.%f%b" || \
+        print -P "%F{160} The clone has failed.%f%b"
+fi
+
+source "$HOME/.local/share/zinit/zinit.git/zinit.zsh"
+autoload -Uz _zinit
+(( ${+_comps} )) && _comps[zinit]=_zinit
+
+zinit light-mode for \
+    zdharma-continuum/zinit-annex-as-monitor \
+    zdharma-continuum/zinit-annex-bin-gem-node \
+    zdharma-continuum/zinit-annex-patch-dl \
+    zdharma-continuum/zinit-annex-rust
+
+zinit light zsh-users/zsh-autosuggestions
+zinit light zsh-users/zsh-syntax-highlighting
+zinit light jeffreytse/zsh-vi-mode
+zinit light Aloxaf/fzf-tab
+zinit light zsh-users/zsh-completions
+zinit light hlissner/zsh-autopair
+
+# fzf-git must be sourced after zsh-vi-mode reinitializes keymaps
+# CTRL-G CTRL-H and CTRL-G CTRL-L are swallowed by tmux; use CTRL-G h/l instead
+zvm_after_init_commands+=(
+  'source ~/.local/share/zinit/plugins/junegunn---fzf-git.sh/fzf-git.sh 2>/dev/null; for m in main viins vicmd emacs; do bindkey -M $m -r "^G" 2>/dev/null; done'
+  'eval "$(starship init zsh)"'
+)
+
+export PATH=~/.npm-global/bin:$PATH
 
 # Start SSH agent if not already running
 if [ -z "$SSH_AUTH_SOCK" ]; then
   eval "$(ssh-agent -s)" >/dev/null
 fi
-# Commented out to use system dotnet (version 10) as default
-# Use dotnet8 and dotnet9 aliases for older versions
-# export PATH="$HOME/.dotnet:$PATH"
-# export DOTNET_ROOT="$HOME/.dotnet"
 
 export PATH="/opt/homebrew/opt/libpq/bin:$PATH"
+export PATH="$HOME/.dotnet/tools:$PATH"
+export GITHUB_USER=lars.johansen@rikstoto.no
+export ANTHROPIC_CUSTOM_MODEL_OPTION="claude-opus-4-8[1m]"
