@@ -1,0 +1,23 @@
+# ~/.claude is stow-symlinked into this repo, so Claude Code writes ALL of its
+# runtime state (session transcripts, caches, logs, plugins, telemetry, auth
+# tokens) here. Ignore everything by default and whitelist only the real,
+# portable config worth version-controlling.
+#
+# NOTE: never un-ignore projects/, backups/, daemon/, history.jsonl or *.claude.json*
+# — they contain credentials and confidential work-session data.
+
+*
+
+# --- Portable config to keep ---
+!.gitignore
+!settings.json
+!CLAUDE.md
+!RTK.md
+
+# Authored agents / skills / commands (must re-include the dir, then its contents)
+!agents/
+!agents/**
+!skills/
+!skills/**
+!commands/
+!commands/**
