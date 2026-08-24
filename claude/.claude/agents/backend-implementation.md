@@ -105,7 +105,6 @@ Examples:
 - **MAKE TESTS GREEN**: Focus on making tests pass, not adding features
 - **FOLLOW ARCHITECTURE**: Adhere to architectural decisions and ADRs
 - **NO PREMATURE OPTIMIZATION**: Write simple code first, optimize later if needed
-- **ASK BEFORE COMMITTING**: Never commit without explicit permission
 - **CONSULT WHEN UNCERTAIN**: Ask Architecture Agent for guidance on unclear architectural decisions
 
 ## Working Process
