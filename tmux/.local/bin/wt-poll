@@ -1,0 +1,55 @@
+#!/bin/sh
+# Background loop: git state, elapsed time, liveness expiry, window rename.
+# Exits when the tmux server goes away. --once runs a single iteration.
+set -u
+_d=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "${WT_LIB:-$_d/../lib/wt/lib.sh}"
+
+: "${WT_POLL_INTERVAL:=5}"
+once=0
+[ "${1:-}" = "--once" ] && once=1
+
+# A tab-only IFS still squeezes consecutive delimiters and drops them at the
+# ends (it is "IFS whitespace" by POSIX, no matter what IFS is set to), so a
+# window with several unset options -- the common case for one wt-poll never
+# manages -- loses fields and shifts data into the wrong variable. The unit
+# separator is not whitespace, so `read` treats every delimiter literally.
+SEP=$(printf '\037')
+
+while :; do
+  windows=$(tmux list-windows -a -F \
+    "#{window_id}${SEP}#{@wt_path}${SEP}#{@cc_state}${SEP}#{@cc_since}${SEP}#{window_name}" \
+    2>/dev/null) || break
+
+  now=$(date +%s)
+  printf '%s\n' "$windows" | while IFS="$SEP" read -r wid path state since wname; do
+    [ -n "$path" ] || continue
+    [ -d "$path" ] || continue
+
+    tmux set -w -t "$wid" @wt_git "$(wt_git_fragment "$path")" 2>/dev/null || true
+
+    if [ "$state" = busy ] && [ -n "$since" ]; then
+      tmux set -w -t "$wid" @cc_elapsed "$(wt_fmt_elapsed "$((now - since))")" 2>/dev/null || true
+    else
+      tmux set -w -t "$wid" @cc_elapsed "" 2>/dev/null || true
+    fi
+
+    # Liveness is a process check, not a timeout: a legitimately long turn is
+    # never wrongly cleared, and a crashed Claude never leaves a stuck flag.
+    if [ -n "$state" ] && [ "$state" != idle ]; then
+      if ! tmux list-panes -t "$wid" -F '#{pane_current_command}' 2>/dev/null | grep -qx claude; then
+        tmux set -w -t "$wid" -u @cc_state 2>/dev/null || true
+      fi
+    fi
+
+    br=$(git -C "$path" branch --show-current 2>/dev/null || true)
+    if [ -n "$br" ]; then
+      want=$(wt_sanitize_window "$br")
+      [ "$want" = "$wname" ] || tmux rename-window -t "$wid" "$want" 2>/dev/null || true
+    fi
+  done
+
+  [ "$once" -eq 1 ] && break
+  sleep "$WT_POLL_INTERVAL"
+done
+exit 0

@@ -66,3 +66,40 @@ wt_list() {
     printf '%s\t%s\t%s\t%s\n' "$r" "$p" "$b" "$(wt_window_for_path "$p")"
   done
 }
+
+# "2m5s", "45s", "1h3m"
+wt_fmt_elapsed() {
+  s=$1
+  if [ "$s" -lt 60 ]; then
+    printf '%ds' "$s"
+  elif [ "$s" -lt 3600 ]; then
+    printf '%dm%ds' "$((s / 60))" "$((s % 60))"
+  else
+    printf '%dh%dm' "$((s / 3600))" "$(((s % 3600) / 60))"
+  fi
+}
+
+# "main ^3 +12/-3 *" — branch, ahead/behind, diffstat, dirty marker.
+# --ignore-submodules so a dirty submodule does not mark the worktree dirty.
+wt_git_fragment() {
+  p=$1
+  git -C "$p" rev-parse --git-dir >/dev/null 2>&1 || return 0
+  br=$(git -C "$p" branch --show-current 2>/dev/null || true)
+  [ -n "$br" ] || br=$(git -C "$p" rev-parse --short HEAD 2>/dev/null || echo '?')
+  out=$br
+
+  ab=$(git -C "$p" rev-list --left-right --count '@{upstream}...HEAD' 2>/dev/null || true)
+  if [ -n "$ab" ]; then
+    behind=$(printf '%s' "$ab" | cut -f1)
+    ahead=$(printf '%s' "$ab" | cut -f2)
+    [ "${ahead:-0}" -gt 0 ] 2>/dev/null && out="$out ↑$ahead"
+    [ "${behind:-0}" -gt 0 ] 2>/dev/null && out="$out ↓$behind"
+  fi
+
+  stat=$(git -C "$p" diff --numstat --ignore-submodules 2>/dev/null |
+    awk '{a += $1; d += $2} END {if (NR > 0) printf "+%d/-%d", a, d}')
+  [ -n "$stat" ] && out="$out $stat"
+
+  [ -n "$(git -C "$p" status --porcelain --ignore-submodules 2>/dev/null)" ] && out="$out *"
+  printf '%s' "$out"
+}
