@@ -6,9 +6,61 @@ _d=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 usage() {
   cat >&2 <<EOF
 usage: wt <command>
-  list          TSV of every worktree: repo, path, branch, window_id
+  list           TSV of every worktree: repo, path, branch, window_id
+  open <path>    focus the window for <path>, creating it if needed
+  close          kill the current window (worktree is left on disk)
 EOF
   exit 2
+}
+
+require_tmux() {
+  [ -n "${TMUX:-}" ] || { echo "wt: not inside tmux" >&2; exit 1; }
+}
+
+wt_open() {
+  path=$1
+  require_tmux
+  [ -d "$path" ] || { echo "wt: no such worktree: $path" >&2; exit 1; }
+
+  existing=$(wt_window_for_path "$path")
+  if [ -n "$existing" ]; then
+    tmux select-window -t "$existing"
+    tmux switch-client -t "$existing" 2>/dev/null || true
+    return 0
+  fi
+
+  main=$(wt_main_for "$path") || { echo "wt: not a git worktree: $path" >&2; exit 1; }
+  sess=$(wt_sanitize_session "$(basename "$main")")
+  br=$(git -C "$path" branch --show-current 2>/dev/null || true)
+  [ -n "$br" ] || br=$(git -C "$path" rev-parse --short HEAD 2>/dev/null || echo detached)
+  win=$(wt_sanitize_window "$br")
+
+  if tmux has-session -t "=$sess" 2>/dev/null; then
+    wid=$(tmux new-window -t "=$sess:" -c "$path" -n "$win" -P -F '#{window_id}')
+  else
+    tmux new-session -d -s "$sess" -c "$path" -n "$win"
+    wid=$(tmux list-windows -t "=$sess" -F '#{window_id}' | head -n1)
+  fi
+
+  tmux set -w -t "$wid" @wt_path "$path"
+  p0=$(tmux list-panes -t "$wid" -F '#{pane_id}' | head -n1)
+  tmux split-window -h -l 35% -t "$p0" -c "$path"
+  # WT_SHELL=1 keeps tests from launching a real Claude session
+  [ -n "${WT_SHELL:-}" ] || tmux send-keys -t "$p0" 'claude' Enter
+  tmux select-pane -t "$p0"
+  tmux select-window -t "$wid"
+  tmux switch-client -t "$wid" 2>/dev/null || true
+}
+
+wt_close() {
+  require_tmux
+  sess=$(tmux display -p '#{session_name}')
+  n=$(tmux list-windows -t "=$sess" | wc -l | tr -d ' ')
+  if [ "$n" -le 1 ]; then
+    tmux kill-session -t "=$sess"
+  else
+    tmux kill-window -t "$(tmux display -p '#{window_id}')"
+  fi
 }
 
 cmd=${1:-}
@@ -16,6 +68,8 @@ cmd=${1:-}
 shift || true
 
 case "$cmd" in
-  list) wt_list ;;
-  *)    usage ;;
+  list)  wt_list ;;
+  open)  [ $# -ge 1 ] || usage; wt_open "$1" ;;
+  close) wt_close ;;
+  *)     usage ;;
 esac
