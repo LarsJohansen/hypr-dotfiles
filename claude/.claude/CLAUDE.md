@@ -1,0 +1,2 @@
+- You can't do sudo commands, I have to do it for you
+- Worktree directory preference: create git worktrees in a sibling directory named `<repo>-worktrees/`, e.g. `~/Projects/trav-analyse-worktrees/<branch>`. Do not use `.worktrees/` inside the repo.

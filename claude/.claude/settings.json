@@ -1,3 +1,61 @@
 {
-  "alwaysThinkingEnabled": true
+  "permissions": {
+    "defaultMode": "auto"
+  },
+  "model": "opus",
+  "skillOverrides": {
+    "development-workflow": "off"
+  },
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true,
+    "code-review@claude-plugins-official": false,
+    "frontend-design@claude-plugins-official": false
+  },
+  "alwaysThinkingEnabled": true,
+  "autoUpdatesChannel": "latest",
+  "tui": "fullscreen",
+  "editorMode": "vim",
+  "agentPushNotifEnabled": true,
+  "hooks": {
+    "UserPromptSubmit": [
+      { "matcher": "*", "hooks": [ { "type": "command", "command": "wt-hook busy" } ] }
+    ],
+    "Notification": [
+      { "matcher": "*", "hooks": [ { "type": "command", "command": "wt-hook attention" } ] }
+    ],
+    "Stop": [
+      { "matcher": "*", "hooks": [ { "type": "command", "command": "wt-hook attention" } ] }
+    ],
+    "SessionEnd": [
+      { "matcher": "*", "hooks": [ { "type": "command", "command": "wt-hook clear" } ] }
+    ]
+  },
+  "autoMode": {
+    "environment": [
+      "### Org-wide",
+      "**Organization**: None configured",
+      "**Cloud provider(s)**: None configured",
+      "**Repository visibility**: assume private (no remotes configured; local-only repo per README — \"Local and read-only... runs only on this machine\")",
+      "**Internal sharing / snippet hosting**: None configured — treat public paste/gist services as outside the trust boundary",
+      "**Secrets management**: None configured",
+      "**Default / protected branches**: not queryable (no remotes; gh lookup not derivable) — assume default branch only, no protection info available",
+      "**CI/CD deploy targets**: None configured",
+      "**Network posture**: restrictive by design for this project — client throttled to one request/second, single-threaded, circuit-breaks after consecutive failures, targets an undocumented internal BFF where \"reachable is not authorised\"; treat that BFF as sensitive-access-only, not a general trusted host",
+      "**Source control**: The trav-analyse repo at /home/lars/Projects/trav-analyse (no remotes configured)",
+      "**Trusted internal domains**: None configured",
+      "**Trusted cloud buckets**: None configured",
+      "**Key internal services**: the undocumented internal BFF (Norsk Rikstoto race-data API) this project polls — access is data-collection only, not a general trust grant",
+      "**Internal package registry**: None configured",
+      "**Sensitive data locations & audiences**: local DuckDB store at ~/.local/share/trav/trav.duckdb (raw + curated race/odds data pulled from a third-party-licensed, undocumented BFF); README states the tool \"never redistributes data\" — keep this data local only, not shared externally",
+      "**Data retention / declassification**: None configured",
+      "**Sensitive remote targets**: any namespace, host, or container whose name carries prod or production as a whole word or name segment",
+      "**Protected deployment namespaces / environments**: None configured — fall back to the Sensitive remote targets heuristic",
+      "**Protected IaC scopes**: IAM, RBAC, networking, quota, and node-pool resources; anything whose name or tag carries prod or production as a whole word or name segment",
+      "### User-specific",
+      "**Primary use of Claude Code**: software development (personal decision-support tool for trot race analysis)",
+      "**Trusted repo**: /home/lars/Projects/trav-analyse (no remotes; local-only project)",
+      "**Org-specific CLIs**: None configured",
+      "routine under trav-analyse/ prefix: uv run pytest, uv run trav (backfill/watch/check/stats/backtest/drift/ledger/crowd), uv run streamlit run src/trav/app/main.py"
+    ]
+  }
 }

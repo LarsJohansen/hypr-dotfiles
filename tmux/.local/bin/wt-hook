@@ -1,0 +1,42 @@
+#!/bin/sh
+# Claude Code hook receiver. Usage: wt-hook <busy|attention|clear>
+# Reads the hook event JSON on stdin. Always exits 0 and prints nothing:
+# a failing hook must never disturb the Claude session.
+set -u
+_d=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "${WT_LIB:-$_d/../lib/wt/lib.sh}" 2>/dev/null || exit 0
+
+state=${1:-}
+[ -n "$state" ] || exit 0
+json=$(cat 2>/dev/null || true)
+[ -n "${TMUX:-}" ] || exit 0
+
+wid=""
+if [ -n "${TMUX_PANE:-}" ]; then
+  wid=$(tmux display -t "$TMUX_PANE" -p '#{window_id}' 2>/dev/null || true)
+fi
+if [ -z "$wid" ]; then
+  cwd=$(printf '%s' "$json" | jq -r '.cwd // empty' 2>/dev/null || true)
+  [ -n "$cwd" ] && wid=$(wt_window_for_cwd "$cwd" || true)
+fi
+[ -n "$wid" ] || exit 0
+
+case "$state" in
+  clear)
+    tmux set -w -t "$wid" -u @cc_state 2>/dev/null || true
+    tmux set -w -t "$wid" -u @cc_since 2>/dev/null || true
+    tmux set -w -t "$wid" -u @cc_elapsed 2>/dev/null || true
+    ;;
+  attention)
+    # If you are already looking at this window, there is nothing to flag.
+    seen=$(tmux display -t "$wid" -p '#{&&:#{window_active},#{session_attached}}' 2>/dev/null || echo 0)
+    [ "$seen" = "1" ] && exit 0
+    tmux set -w -t "$wid" @cc_state attention 2>/dev/null || true
+    tmux set -w -t "$wid" @cc_since "$(date +%s)" 2>/dev/null || true
+    ;;
+  busy)
+    tmux set -w -t "$wid" @cc_state busy 2>/dev/null || true
+    tmux set -w -t "$wid" @cc_since "$(date +%s)" 2>/dev/null || true
+    ;;
+esac
+exit 0
