@@ -22,7 +22,7 @@ wt_open() {
   require_tmux
   [ -d "$path" ] || { echo "wt: no such worktree: $path" >&2; exit 1; }
 
-  existing=$(wt_window_for_path "$path")
+  existing=$(wt_window_for_path "$path" || true)
   if [ -n "$existing" ]; then
     tmux select-window -t "$existing"
     tmux switch-client -t "$existing" 2>/dev/null || true
