@@ -9,6 +9,7 @@ usage: wt <command>
   list           TSV of every worktree: repo, path, branch, window_id
   open <path>    focus the window for <path>, creating it if needed
   close          kill the current window (worktree is left on disk)
+  new <branch>   create a worktree at <repo>-worktrees/<branch> and open it
 EOF
   exit 2
 }
@@ -63,6 +64,28 @@ wt_close() {
   fi
 }
 
+wt_new() {
+  branch=$1
+  require_tmux
+  main=$(wt_main_for "$PWD") || { echo "wt: not in a git repo" >&2; exit 1; }
+  parent=$(dirname "$main")
+  repo=$(basename "$main")
+  dir="$parent/$repo-worktrees/$(wt_sanitize_window "$branch")"
+
+  if [ -d "$dir" ]; then
+    wt_open "$dir"
+    return 0
+  fi
+
+  mkdir -p "$parent/$repo-worktrees"
+  if git -C "$main" show-ref --verify --quiet "refs/heads/$branch"; then
+    git -C "$main" worktree add -q "$dir" "$branch"
+  else
+    git -C "$main" worktree add -q -b "$branch" "$dir"
+  fi
+  wt_open "$dir"
+}
+
 cmd=${1:-}
 [ -n "$cmd" ] || usage
 shift || true
@@ -71,5 +94,6 @@ case "$cmd" in
   list)  wt_list ;;
   open)  [ $# -ge 1 ] || usage; wt_open "$1" ;;
   close) wt_close ;;
+  new)   [ $# -ge 1 ] || usage; wt_new "$1" ;;
   *)     usage ;;
 esac
