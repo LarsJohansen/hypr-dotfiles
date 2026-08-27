@@ -150,6 +150,13 @@ design hangs off it.
 of an attached client, `attention` is not set. The flag means "something happened
 while you weren't looking", not merely "something happened".
 
+**Clearing the flag.** A `session-window-changed` hook clears `attention` when
+you switch to the window. **Not `pane-focus-in`** — that responds to OS-level
+terminal focus, not tmux-internal window switching, and is additionally gated
+behind `focus-events` (off by default), so it never fires for this use. Verified
+on tmux 3.7b: `session-window-changed` fires for `select-window`, `next-window`,
+`previous-window` and `last-window`, and acts on the window switched TO.
+
 Exits 0 unconditionally and never writes to stdout — a failing hook must not
 disturb the Claude session.
 

@@ -49,7 +49,7 @@
 | `tmux/tests/helpers.sh` | scratch repo + scratch tmux server fixtures |
 | `tmux/tests/test_*.sh` | one file per task's behavior |
 | `tmux/tests/run.sh` | runs every `test_*.sh`, reports pass/fail |
-| `tmux/.tmux.conf` | *modify*: keybinds, status format, `pane-focus-in` hook, poller startup |
+| `tmux/.tmux.conf` | *modify*: keybinds, status format, `session-window-changed` hook, poller startup |
 | `claude/.claude/settings.json` | *modify*: `hooks` block |
 | `claude/.claude/CLAUDE.md` | *modify*: worktree directory convention |
 
