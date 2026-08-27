@@ -26,6 +26,12 @@
   - `pane_current_command` reports exactly `claude` for a running session. The liveness check is a string compare, not a process-tree walk.
   - Hook JSON on stdin always contains `.cwd`. Non-tool events use `"matcher": "*"`.
   - `#{&&:x,y}` and `#{USER}` are valid tmux formats.
+  - `find` on this machine is **bfs**, not GNU findutils. Relative timestamps
+    (`-newermt "7 days ago"`) are rejected; `-mtime -7` works. All `find` flags
+    used in this plan are bfs-compatible.
+  - Claude plan limits are NOT discoverable locally — only the tier name, in
+    `.credentials.json`. Any percentage must come from a user-supplied budget.
+    Never hardcode a limit table.
 
 ---
 
@@ -1041,7 +1047,282 @@ git commit -m "tmux: add wt-poll and worktree-aware status bar"
 
 ---
 
-## Manual acceptance (after Task 6)
+---
+
+### Task 7: `wt-usage` and the status-right gauge
+
+**Files:**
+- Create: `tmux/.local/bin/wt-usage`
+- Modify: `tmux/.local/bin/wt-poll`
+- Modify: `tmux/.tmux.conf`
+- Test: `tmux/tests/test_usage.sh`
+
+**Interfaces:**
+- Consumes: `WT_TAB` from `lib.sh` (Task 1); the poll loop from Task 6.
+- Produces: `wt-usage [--json]` printing the rendered gauge on stdout; tmux
+  **server** option `@wt_usage` (server-scoped, not window-scoped — it is one
+  global number, unlike every other option in this project).
+
+**Facts established by probe — do not re-derive:**
+- A full 7-day scan of `~/.claude/projects/*/*.jsonl` costs ~2s (247MB, 584
+  files, 41k usage records). Far too slow for the 5s loop; hence the 60s cache.
+- `find` on this machine is **bfs**, not GNU findutils. It rejects relative
+  timestamps (`-newermt "7 days ago"` → "Invalid timestamp"). Use `-mtime -7`.
+- Numeric plan limits are NOT available locally. `.credentials.json` has only
+  the tier name (`subscriptionType`, `rateLimitTier`); no rate-limit headers are
+  cached anywhere. Percentages are therefore opt-in via user-supplied budgets.
+  **Never invent a limit table.**
+- `stats-cache.json` is pre-aggregated but goes stale for days. Do not use it.
+- Per-record token total is
+  `input_tokens + cache_creation_input_tokens + cache_read_input_tokens + output_tokens`.
+  Records live at `.message.usage`; the timestamp is top-level `.timestamp` (ISO 8601).
+
+- [ ] **Step 1: Write the failing test**
+
+Create `tmux/tests/test_usage.sh`. The test builds a synthetic transcript tree
+so it never depends on the real `~/.claude`:
+
+```sh
+#!/bin/sh
+set -u
+. "$(dirname "$0")/helpers.sh"
+trap wt_test_teardown EXIT
+wt_test_setup
+
+# Synthetic transcript corpus. WT_USAGE_ROOT points wt-usage away from ~/.claude.
+export WT_USAGE_ROOT="$WT_TMP/projects"
+export WT_USAGE_CACHE="$WT_TMP/usage-cache"
+mkdir -p "$WT_USAGE_ROOT/proj-a"
+
+now=$(date -u +%s)
+mk() { date -u -d "@$1" +%Y-%m-%dT%H:%M:%SZ; }
+
+# two records inside the current 5h block, one 3 days old, one 30 days old
+{
+  printf '{"timestamp":"%s","message":{"usage":{"input_tokens":10,"cache_creation_input_tokens":20,"cache_read_input_tokens":30,"output_tokens":40}}}\n' "$(mk $((now - 600)))"
+  printf '{"timestamp":"%s","message":{"usage":{"input_tokens":1,"cache_creation_input_tokens":2,"cache_read_input_tokens":3,"output_tokens":4}}}\n' "$(mk $((now - 1200)))"
+  printf '{"timestamp":"%s","message":{"usage":{"input_tokens":100,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":100}}}\n' "$(mk $((now - 259200)))"
+  printf '{"timestamp":"%s","message":{"usage":{"input_tokens":999,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":999}}}\n' "$(mk $((now - 2592000)))"
+} > "$WT_USAGE_ROOT/proj-a/session.jsonl"
+
+j=$(wt-usage --json)
+
+# 5h block: only the two recent records = 100 + 10 = 110
+wt_assert_eq "$(printf '%s' "$j" | jq -r .block_tokens)" "110" "5h block sums only current-block records"
+# 7d: those two plus the 3-day-old one = 110 + 200 = 310; the 30-day one excluded
+wt_assert_eq "$(printf '%s' "$j" | jq -r .week_tokens)" "310" "7d window excludes records older than 7 days"
+
+# no budgets configured -> raw counts, no percentage
+out=$(wt-usage)
+wt_assert_contains "$out" "5h" "renders a 5h segment"
+wt_assert_contains "$out" "7d" "renders a 7d segment"
+case "$out" in *%*) echo "FAIL percentage shown without a budget" >&2; exit 1;; esac
+printf 'ok   no percentage without a configured budget\n'
+
+# budgets configured -> percentage appears
+out=$(WT_5H_BUDGET=220 WT_WEEK_BUDGET=620 wt-usage)
+wt_assert_contains "$out" "50%" "5h percentage computed from WT_5H_BUDGET"
+
+# cache: a second call within the TTL must not rescan
+wt-usage >/dev/null
+wt_assert_eq "$([ -f "$WT_USAGE_CACHE" ] && echo yes || echo no)" "yes" "cache file written"
+echo '{"block_tokens":1,"week_tokens":2,"rendered":"SENTINEL"}' > "$WT_USAGE_CACHE"
+wt_assert_contains "$(wt-usage)" "SENTINEL" "fresh cache is reused, not recomputed"
+
+# stale cache is recomputed
+touch -d "2 hours ago" "$WT_USAGE_CACHE" 2>/dev/null || touch -t 200001010000 "$WT_USAGE_CACHE"
+case "$(wt-usage)" in *SENTINEL*) echo "FAIL stale cache reused" >&2; exit 1;; esac
+printf 'ok   stale cache is recomputed\n'
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `sh tmux/tests/test_usage.sh`
+Expected: FAIL on "5h block sums only current-block records" — `wt-usage: command not found`.
+
+- [ ] **Step 3: Implement `wt-usage`**
+
+Create `tmux/.local/bin/wt-usage` (mode 755):
+
+```sh
+#!/bin/sh
+# Rolling 5h-block and trailing-7d token usage, from Claude Code transcripts.
+# Cached, because a full scan costs ~2s. --json prints the raw numbers.
+set -u
+
+: "${WT_USAGE_ROOT:=$HOME/.claude/projects}"
+: "${WT_USAGE_CACHE:=${XDG_CACHE_HOME:-$HOME/.cache}/wt-usage.json}"
+: "${WT_USAGE_TTL:=60}"
+: "${WT_BLOCK_HOURS:=5}"
+
+want_json=0
+[ "${1:-}" = "--json" ] && want_json=1
+
+emit() {
+  if [ "$want_json" -eq 1 ]; then
+    cat "$WT_USAGE_CACHE"
+  else
+    jq -r '.rendered' "$WT_USAGE_CACHE" 2>/dev/null
+  fi
+}
+
+# Reuse a cache younger than the TTL.
+if [ -f "$WT_USAGE_CACHE" ]; then
+  age=$(( $(date +%s) - $(stat -c %Y "$WT_USAGE_CACHE" 2>/dev/null || echo 0) ))
+  if [ "$age" -lt "$WT_USAGE_TTL" ]; then
+    emit
+    exit 0
+  fi
+fi
+
+now=$(date -u +%s)
+week_start=$((now - 604800))
+block_span=$((WT_BLOCK_HOURS * 3600))
+
+# One pass: emit "<epoch> <tokens>" per usage record from the last 7 days.
+# -mtime -7 because find here is bfs, which rejects relative -newermt strings.
+records=$(find "$WT_USAGE_ROOT" -name '*.jsonl' -mtime -7 -print0 2>/dev/null |
+  xargs -0 -r jq -r --argjson since "$week_start" '
+    select(.message.usage != null and .timestamp != null)
+    | (.timestamp | fromdateiso8601) as $t
+    | select($t >= $since)
+    | [ $t,
+        ( .message.usage.input_tokens
+        + .message.usage.cache_creation_input_tokens
+        + .message.usage.cache_read_input_tokens
+        + .message.usage.output_tokens ) ]
+    | @tsv' 2>/dev/null)
+
+# Block boundaries, ccusage-style: a block opens at the first record after a
+# gap of >= WT_BLOCK_HOURS, and stays open for WT_BLOCK_HOURS. The "current"
+# block is the last one opened, provided it has not already expired.
+set -- $(printf '%s\n' "$records" | sort -n | awk -v span="$block_span" -v now="$now" '
+  NF != 2 { next }
+  {
+    if (start == "" || $1 - last >= span || $1 - start >= span) { start = $1; sum = 0 }
+    sum += $2
+    last = $1
+    week += $2
+  }
+  END {
+    if (start != "" && now - start < span) { print sum, week, start + span }
+    else { print 0, week + 0, 0 }
+  }')
+block_tokens=${1:-0}
+week_tokens=${2:-0}
+block_end=${3:-0}
+
+fmt() {
+  awk -v n="$1" 'BEGIN {
+    if (n >= 1000000) printf "%.1fM", n / 1000000
+    else if (n >= 1000) printf "%.0fk", n / 1000
+    else printf "%d", n
+  }'
+}
+
+# A bar and a percentage only when the user supplied a budget; the real plan
+# limits are not discoverable locally, so anything else would be invented.
+seg() {
+  label=$1; used=$2; budget=${3:-}
+  if [ -n "$budget" ] && [ "$budget" -gt 0 ] 2>/dev/null; then
+    pct=$((used * 100 / budget))
+    [ "$pct" -gt 100 ] && pct=100
+    filled=$((pct * 8 / 100))
+    bar=""
+    i=0
+    while [ "$i" -lt 8 ]; do
+      if [ "$i" -lt "$filled" ]; then bar="$bar▪"; else bar="$bar▫"; fi
+      i=$((i + 1))
+    done
+    printf '%s %s %d%%' "$label" "$bar" "$pct"
+  else
+    printf '%s %s' "$label" "$(fmt "$used")"
+  fi
+}
+
+rendered=$(printf '%s · %s' \
+  "$(seg 5h "$block_tokens" "${WT_5H_BUDGET:-}")" \
+  "$(seg 7d "$week_tokens" "${WT_WEEK_BUDGET:-}")")
+
+if [ "$block_end" -gt "$now" ]; then
+  mins=$(( (block_end - now) / 60 ))
+  rendered=$(printf '%s (%dh%02dm left)' "$rendered" "$((mins / 60))" "$((mins % 60))")
+fi
+
+mkdir -p "$(dirname "$WT_USAGE_CACHE")"
+jq -n --argjson b "$block_tokens" --argjson w "$week_tokens" \
+      --argjson e "$block_end" --arg r "$rendered" \
+  '{block_tokens: $b, week_tokens: $w, block_end: $e, rendered: $r}' > "$WT_USAGE_CACHE"
+
+emit
+exit 0
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `chmod +x tmux/.local/bin/wt-usage && sh tmux/tests/test_usage.sh`
+Expected: PASS — eight `ok` lines.
+
+- [ ] **Step 5: Call it from the poll loop on a slower cadence**
+
+In `tmux/.local/bin/wt-poll`, add a counter so the ~2s scan runs once a minute
+rather than every iteration. Directly after `: "${WT_POLL_INTERVAL:=5}"`, add:
+
+```sh
+: "${WT_USAGE_EVERY:=12}"   # every 12th tick at 5s = 60s
+tick=0
+```
+
+and inside the `while :; do` loop, directly before the `[ "$once" -eq 1 ] && break`
+line, add:
+
+```sh
+  if [ "$((tick % WT_USAGE_EVERY))" -eq 0 ]; then
+    # Server-scoped: one global number, unlike the per-window options above.
+    tmux set -s @wt_usage "$(wt-usage 2>/dev/null)" 2>/dev/null || true
+  fi
+  tick=$((tick + 1))
+```
+
+- [ ] **Step 6: Show it in status-right**
+
+In `tmux/.tmux.conf`, replace the existing line
+
+```
+set -g status-right '#(date +%H:%M\ %d-%b)'
+```
+
+with
+
+```
+set -g status-right '#{?@wt_usage,#[fg=magenta]#{@wt_usage}#[default]  ,}#(date +%H:%M\ %d-%b)'
+```
+
+- [ ] **Step 7: Verify end to end against the real transcript corpus**
+
+Run:
+```bash
+time ~/.dotfiles/tmux/.local/bin/wt-usage
+time ~/.dotfiles/tmux/.local/bin/wt-usage
+WT_5H_BUDGET=5000000 ~/.dotfiles/tmux/.local/bin/wt-usage --json | jq .
+```
+Expected: the first call takes ~2s and prints something like `5h 3.2M · 7d 18.4M`;
+the second returns instantly from cache. The JSON has non-negative
+`block_tokens` and `week_tokens`, with `week_tokens >= block_tokens`.
+
+- [ ] **Step 8: Run the whole suite**
+
+Run: `sh tmux/tests/run.sh`
+Expected: `ALL PASS`.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add tmux/.local/bin/wt-usage tmux/.local/bin/wt-poll tmux/tests/test_usage.sh tmux/.tmux.conf
+git commit -m "tmux: add wt-usage 5h-block and 7d token gauge"
+```
+
+## Manual acceptance (after Task 7)
 
 These need a real terminal and cannot be automated here. Run them yourself:
 
@@ -1052,6 +1333,9 @@ These need a real terminal and cannot be automated here. Run them yourself:
 5. Wait for it to finish. The flag turns to a red `●`. Switch to the window — the `●` clears.
 6. `prefix W`, type a branch name. A worktree appears at `<repo>-worktrees/<branch>`.
 7. Kill Claude with `C-c` in its pane. Within ~5s the flag disappears (liveness expiry).
+8. Within a minute, status-right shows the usage gauge. Compare it against what
+   `/usage` reports in a Claude session, and set `WT_5H_BUDGET` / `WT_WEEK_BUDGET`
+   in your shell profile to calibrate the percentages.
 
 ## Deferred (not in this plan)
 
