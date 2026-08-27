@@ -1001,7 +1001,7 @@ Expected: PASS — six `ok` lines.
 
 - [ ] **Step 6: Wire up the status format and start the poller**
 
-Replace the `set -g status-right` line's neighborhood in `tmux/.tmux.conf` — specifically, add these lines to the `### --- Claude worktrees (wt) --- ###` block:
+Append these lines to the `### --- Claude worktrees (wt) --- ###` block in `tmux/.tmux.conf`. Leave the existing `set -g status-right` line alone — it is Task 7's to change, not this task's.
 
 ```
 # Absence is the quiet state; every glyph means something needs reading.
@@ -1277,7 +1277,9 @@ and inside the `while :; do` loop, directly before the `[ "$once" -eq 1 ] && bre
 line, add:
 
 ```sh
-  if [ "$((tick % WT_USAGE_EVERY))" -eq 0 ]; then
+  # Skipped under --once: the scan reaches the real ~/.claude corpus and takes
+  # ~2s, which a test must never do.
+  if [ "$once" -eq 0 ] && [ "$((tick % WT_USAGE_EVERY))" -eq 0 ]; then
     # Server-scoped: one global number, unlike the per-window options above.
     tmux set -s @wt_usage "$(wt-usage 2>/dev/null)" 2>/dev/null || true
   fi
