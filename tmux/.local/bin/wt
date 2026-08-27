@@ -10,6 +10,7 @@ usage: wt <command>
   open <path>    focus the window for <path>, creating it if needed
   close          kill the current window (worktree is left on disk)
   new <branch>   create a worktree at <repo>-worktrees/<branch> and open it
+  menu           fzf popup over every worktree; Enter opens it
 EOF
   exit 2
 }
@@ -86,6 +87,36 @@ wt_new() {
   wt_open "$dir"
 }
 
+# Human-readable picker rows. Field 1 stays the path so _pick can cut it back
+# out; the rest is display only.
+wt_rows() {
+  wt_list | while IFS="$WT_TAB" read -r repo path branch wid; do
+    mark=' '
+    [ -n "$wid" ] && mark='*'
+    printf '%s\t%s %-22s %s\n' "$path" "$mark" "$repo" "$branch"
+  done
+}
+
+wt_pick() {
+  # WT_PICK_CMD replaces the whole picker; tests set it to something
+  # deterministic. Overriding just the binary would break, because the fzf
+  # flags below are not portable to another command.
+  if [ -n "${WT_PICK_CMD:-}" ]; then
+    wt_rows | sh -c "$WT_PICK_CMD" | cut -f1
+  else
+    wt_rows | fzf --with-nth=2.. --delimiter="$WT_TAB" --no-sort --reverse \
+      --prompt='worktree> ' 2>/dev/null | cut -f1
+  fi
+}
+
+wt_menu() {
+  require_tmux
+  # $0 may be a bare name; the popup gets its own PATH, so resolve it here.
+  self="$_d/wt"
+  tmux display-popup -E -w 80% -h 60% \
+    "sel=\$($self _pick); [ -n \"\$sel\" ] && $self open \"\$sel\""
+}
+
 cmd=${1:-}
 [ -n "$cmd" ] || usage
 shift || true
@@ -95,5 +126,8 @@ case "$cmd" in
   open)  [ $# -ge 1 ] || usage; wt_open "$1" ;;
   close) wt_close ;;
   new)   [ $# -ge 1 ] || usage; wt_new "$1" ;;
+  menu)  wt_menu ;;
+  _rows) wt_rows ;;
+  _pick) wt_pick ;;
   *)     usage ;;
 esac
