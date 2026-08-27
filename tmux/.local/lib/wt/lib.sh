@@ -44,7 +44,7 @@ wt_window_for_path() {
 wt_window_for_cwd() {
   tmux list-windows -a -F "#{window_id}${WT_TAB}#{@wt_path}" 2>/dev/null |
     awk -F"${WT_TAB}" -v c="$1" '
-      $2 != "" && index(c, $2) == 1 && length($2) > best {
+      $2 != "" && (c == $2 || index(c, $2 "/") == 1) && length($2) > best {
         best = length($2); id = $1
       }
       END { if (id != "") print id }'
