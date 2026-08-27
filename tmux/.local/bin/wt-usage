@@ -1,0 +1,116 @@
+#!/bin/sh
+# Rolling 5h-block and trailing-7d token usage, from Claude Code transcripts.
+# Cached, because a full scan costs ~2s. --json prints the raw numbers.
+set -u
+
+: "${WT_USAGE_ROOT:=$HOME/.claude/projects}"
+: "${WT_USAGE_CACHE:=${XDG_CACHE_HOME:-$HOME/.cache}/wt-usage.json}"
+: "${WT_USAGE_TTL:=60}"
+: "${WT_BLOCK_HOURS:=5}"
+
+want_json=0
+[ "${1:-}" = "--json" ] && want_json=1
+
+emit() {
+  if [ "$want_json" -eq 1 ]; then
+    cat "$WT_USAGE_CACHE"
+  else
+    jq -r '.rendered' "$WT_USAGE_CACHE" 2>/dev/null
+  fi
+}
+
+# Reuse a cache younger than the TTL, but only if it was rendered against the
+# same budgets: a fresh-but-unbudgeted cache must not mask a newly-set
+# WT_5H_BUDGET/WT_WEEK_BUDGET behind a stale percentage-free rendering.
+budget_key="${WT_5H_BUDGET:-}:${WT_WEEK_BUDGET:-}"
+if [ -f "$WT_USAGE_CACHE" ]; then
+  age=$(( $(date +%s) - $(stat -c %Y "$WT_USAGE_CACHE" 2>/dev/null || echo 0) ))
+  cached_budget_key=$(jq -r '(.b5h // "") + ":" + (.bweek // "")' "$WT_USAGE_CACHE" 2>/dev/null || echo ":")
+  if [ "$age" -lt "$WT_USAGE_TTL" ] && [ "$cached_budget_key" = "$budget_key" ]; then
+    emit
+    exit 0
+  fi
+fi
+
+now=$(date -u +%s)
+week_start=$((now - 604800))
+block_span=$((WT_BLOCK_HOURS * 3600))
+
+# One pass: emit "<epoch> <tokens>" per usage record from the last 7 days.
+# -mtime -7 because find here is bfs, which rejects relative -newermt strings.
+records=$(find "$WT_USAGE_ROOT" -name '*.jsonl' -mtime -7 -print0 2>/dev/null |
+  xargs -0 -r jq -r --argjson since "$week_start" '
+    select(.message.usage != null and .timestamp != null)
+    | (.timestamp | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601) as $t
+    | select($t >= $since)
+    | [ $t,
+        ( .message.usage.input_tokens
+        + .message.usage.cache_creation_input_tokens
+        + .message.usage.cache_read_input_tokens
+        + .message.usage.output_tokens ) ]
+    | @tsv' 2>/dev/null)
+
+# Block boundaries, ccusage-style: a block opens at the first record after a
+# gap of >= WT_BLOCK_HOURS, and stays open for WT_BLOCK_HOURS. The "current"
+# block is the last one opened, provided it has not already expired.
+set -- $(printf '%s\n' "$records" | sort -n | awk -v span="$block_span" -v now="$now" '
+  NF != 2 { next }
+  {
+    if (start == "" || $1 - last >= span || $1 - start >= span) { start = $1; sum = 0 }
+    sum += $2
+    last = $1
+    week += $2
+  }
+  END {
+    if (start != "" && now - start < span) { print sum, week, start + span }
+    else { print 0, week + 0, 0 }
+  }')
+block_tokens=${1:-0}
+week_tokens=${2:-0}
+block_end=${3:-0}
+
+fmt() {
+  awk -v n="$1" 'BEGIN {
+    if (n >= 1000000) printf "%.1fM", n / 1000000
+    else if (n >= 1000) printf "%.0fk", n / 1000
+    else printf "%d", n
+  }'
+}
+
+# A bar and a percentage only when the user supplied a budget; the real plan
+# limits are not discoverable locally, so anything else would be invented.
+seg() {
+  label=$1; used=$2; budget=${3:-}
+  if [ -n "$budget" ] && [ "$budget" -gt 0 ] 2>/dev/null; then
+    pct=$((used * 100 / budget))
+    [ "$pct" -gt 100 ] && pct=100
+    filled=$((pct * 8 / 100))
+    bar=""
+    i=0
+    while [ "$i" -lt 8 ]; do
+      if [ "$i" -lt "$filled" ]; then bar="$bar▪"; else bar="$bar▫"; fi
+      i=$((i + 1))
+    done
+    printf '%s %s %d%%' "$label" "$bar" "$pct"
+  else
+    printf '%s %s' "$label" "$(fmt "$used")"
+  fi
+}
+
+rendered=$(printf '%s · %s' \
+  "$(seg 5h "$block_tokens" "${WT_5H_BUDGET:-}")" \
+  "$(seg 7d "$week_tokens" "${WT_WEEK_BUDGET:-}")")
+
+if [ "$block_end" -gt "$now" ]; then
+  mins=$(( (block_end - now) / 60 ))
+  rendered=$(printf '%s (%dh%02dm left)' "$rendered" "$((mins / 60))" "$((mins % 60))")
+fi
+
+mkdir -p "$(dirname "$WT_USAGE_CACHE")"
+jq -n --argjson b "$block_tokens" --argjson w "$week_tokens" \
+      --argjson e "$block_end" --arg r "$rendered" \
+      --arg b5h "${WT_5H_BUDGET:-}" --arg bweek "${WT_WEEK_BUDGET:-}" \
+  '{block_tokens: $b, week_tokens: $w, block_end: $e, rendered: $r, b5h: $b5h, bweek: $bweek}' > "$WT_USAGE_CACHE"
+
+emit
+exit 0

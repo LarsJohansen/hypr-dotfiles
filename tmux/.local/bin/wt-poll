@@ -6,6 +6,8 @@ _d=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 . "${WT_LIB:-$_d/../lib/wt/lib.sh}"
 
 : "${WT_POLL_INTERVAL:=5}"
+: "${WT_USAGE_EVERY:=12}"   # every 12th tick at 5s = 60s
+tick=0
 once=0
 [ "${1:-}" = "--once" ] && once=1
 
@@ -48,6 +50,14 @@ while :; do
       [ "$want" = "$wname" ] || tmux rename-window -t "$wid" "$want" 2>/dev/null || true
     fi
   done
+
+  # Skipped under --once: the scan reaches the real ~/.claude corpus and takes
+  # ~2s, which a test must never do.
+  if [ "$once" -eq 0 ] && [ "$((tick % WT_USAGE_EVERY))" -eq 0 ]; then
+    # Server-scoped: one global number, unlike the per-window options above.
+    tmux set -s @wt_usage "$(wt-usage 2>/dev/null)" 2>/dev/null || true
+  fi
+  tick=$((tick + 1))
 
   [ "$once" -eq 1 ] && break
   sleep "$WT_POLL_INTERVAL"
