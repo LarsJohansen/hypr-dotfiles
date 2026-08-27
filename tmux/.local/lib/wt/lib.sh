@@ -52,9 +52,15 @@ wt_window_for_cwd() {
 
 # TSV: repo <tab> worktree_path <tab> branch <tab> window_id
 wt_list() {
+  # Internal producer/consumer separator only -- a tab is POSIX "IFS
+  # whitespace" so `IFS=<tab> read` squeezes consecutive empty fields
+  # regardless of what IFS is set to (see wt-poll for the same bug fixed
+  # the same way). The public TSV OUTPUT below is unaffected: it is built
+  # with literal tabs, not this separator.
+  sep=$(printf '\037')
   wt_main_checkouts | while IFS= read -r repo; do
     rname=$(basename "$repo")
-    git -C "$repo" worktree list --porcelain 2>/dev/null | awk -v repo="$rname" -v T="$WT_TAB" '
+    git -C "$repo" worktree list --porcelain 2>/dev/null | awk -v repo="$rname" -v T="$sep" '
       /^worktree /  { path = substr($0, 10); br = ""; sha = "" }
       /^HEAD /      { sha = substr($0, 6, 7) }
       /^branch /    { br = substr($0, 8); sub("refs/heads/", "", br) }
@@ -62,7 +68,7 @@ wt_list() {
       /^$/          { if (path != "") { print repo T path T (br == "" ? sha : br); path = "" } }
       END           { if (path != "") print repo T path T (br == "" ? sha : br) }
     '
-  done | while IFS="$WT_TAB" read -r r p b; do
+  done | while IFS="$sep" read -r r p b; do
     printf '%s\t%s\t%s\t%s\n' "$r" "$p" "$b" "$(wt_window_for_path "$p")"
   done
 }
