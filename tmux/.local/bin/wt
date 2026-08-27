@@ -1,0 +1,21 @@
+#!/bin/sh
+set -eu
+_d=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "${WT_LIB:-$_d/../lib/wt/lib.sh}"
+
+usage() {
+  cat >&2 <<EOF
+usage: wt <command>
+  list          TSV of every worktree: repo, path, branch, window_id
+EOF
+  exit 2
+}
+
+cmd=${1:-}
+[ -n "$cmd" ] || usage
+shift || true
+
+case "$cmd" in
+  list) wt_list ;;
+  *)    usage ;;
+esac
