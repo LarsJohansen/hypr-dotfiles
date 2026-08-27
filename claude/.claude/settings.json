@@ -18,16 +18,16 @@
   "agentPushNotifEnabled": true,
   "hooks": {
     "UserPromptSubmit": [
-      { "matcher": "*", "hooks": [ { "type": "command", "command": "wt-hook busy" } ] }
+      { "matcher": "*", "hooks": [ { "type": "command", "command": "$HOME/.local/bin/wt-hook busy" } ] }
     ],
     "Notification": [
-      { "matcher": "*", "hooks": [ { "type": "command", "command": "wt-hook attention" } ] }
+      { "matcher": "*", "hooks": [ { "type": "command", "command": "$HOME/.local/bin/wt-hook attention" } ] }
     ],
     "Stop": [
-      { "matcher": "*", "hooks": [ { "type": "command", "command": "wt-hook attention" } ] }
+      { "matcher": "*", "hooks": [ { "type": "command", "command": "$HOME/.local/bin/wt-hook attention" } ] }
     ],
     "SessionEnd": [
-      { "matcher": "*", "hooks": [ { "type": "command", "command": "wt-hook clear" } ] }
+      { "matcher": "*", "hooks": [ { "type": "command", "command": "$HOME/.local/bin/wt-hook clear" } ] }
     ]
   },
   "autoMode": {

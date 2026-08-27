@@ -18,10 +18,20 @@ once=0
 # separator is not whitespace, so `read` treats every delimiter literally.
 SEP=$(printf '\037')
 
+# Heartbeat file lets status-right (see .tmux.conf) notice a poller that
+# died without exiting cleanly -- otherwise a stuck busy indicator with a
+# frozen elapsed timer looks exactly like a live one. Keyed the same way as
+# the flock lockfile -- by server, via the pid tmux embeds in $TMUX when it
+# spawns this via run-shell -- so each server's status bar checks its own
+# poller, never another server's.
+srv_pid=$(printf '%s' "${TMUX:-}" | cut -d, -f2)
+HEARTBEAT="/tmp/wt-poll.${USER:-nouser}.${srv_pid:-nopid}.heartbeat"
+
 while :; do
   windows=$(tmux list-windows -a -F \
     "#{window_id}${SEP}#{@wt_path}${SEP}#{@cc_state}${SEP}#{@cc_since}${SEP}#{window_name}" \
     2>/dev/null) || break
+  touch "$HEARTBEAT" 2>/dev/null || true
 
   now=$(date +%s)
   printf '%s\n' "$windows" | while IFS="$SEP" read -r wid path state since wname; do

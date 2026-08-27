@@ -90,7 +90,13 @@ wt_new() {
 # Human-readable picker rows. Field 1 stays the path so _pick can cut it back
 # out; the rest is display only.
 wt_rows() {
-  wt_list | while IFS="$WT_TAB" read -r repo path branch wid; do
+  # Same tab-IFS-squeeze bug as wt-poll and wt_list's internal parse (a tab
+  # is POSIX "IFS whitespace" so consecutive delimiters collapse regardless
+  # of what IFS is set to): translate wt_list's real-tab TSV to the unit
+  # separator before reading. wt_list's PUBLIC output stays tab-separated;
+  # only this parse changes.
+  sep=$(printf '\037')
+  wt_list | tr '\t' "$sep" | while IFS="$sep" read -r repo path branch wid; do
     mark=' '
     [ -n "$wid" ] && mark='*'
     printf '%s\t%s %-22s %s\n' "$path" "$mark" "$repo" "$branch"
