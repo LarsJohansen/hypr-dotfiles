@@ -9,7 +9,12 @@ wt_test_setup() {
   WT_TMP=$(mktemp -d)
   export WT_TMP
   export WT_ROOTS="$WT_TMP/projects"
-  mkdir -p "$WT_TMP/projects"
+  # Redirect tmux's socket lookup into the scratch dir and drop any
+  # inherited server, so a bare `tmux` in library code cannot reach the
+  # user's real session.
+  export TMUX_TMPDIR="$WT_TMP/tmux"
+  mkdir -p "$WT_ROOTS" "$TMUX_TMPDIR"
+  unset TMUX
 }
 
 wt_test_teardown() {
