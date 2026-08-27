@@ -185,7 +185,7 @@ bind w run-shell 'wt menu'
 bind W command-prompt -p "branch:" 'run-shell "wt new %%"'
 bind x run-shell 'wt close'
 
-set-hook -g pane-focus-in 'if -F "#{==:#{@cc_state},attention}" "set -w @cc_state idle"'
+set-hook -g session-window-changed 'if -F "#{==:#{@cc_state},attention}" "set -w @cc_state idle"'
 run-shell -b 'flock -n /tmp/wt-poll.#{USER}.lock ~/.local/bin/wt-poll'
 ```
 

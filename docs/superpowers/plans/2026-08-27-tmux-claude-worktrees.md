@@ -26,6 +26,9 @@
   - `pane_current_command` reports exactly `claude` for a running session. The liveness check is a string compare, not a process-tree walk.
   - Hook JSON on stdin always contains `.cwd`. Non-tool events use `"matcher": "*"`.
   - `#{&&:x,y}` and `#{USER}` are valid tmux formats.
+  - `pane-focus-in` does NOT fire on tmux window switches (OS terminal focus
+    only, and gated behind `focus-events`, off by default). Use
+    `session-window-changed`. Verified empirically on tmux 3.7b.
   - `find` on this machine is **bfs**, not GNU findutils. Relative timestamps
     (`-newermt "7 days ago"`) are rejected; `-mtime -7` works. All `find` flags
     used in this plan are bfs-compatible.
@@ -785,7 +788,10 @@ Append to the `### --- Claude worktrees (wt) --- ###` block in `tmux/.tmux.conf`
 
 ```
 # Looking at the window is what clears the flag: ● means "unseen".
-set-hook -g pane-focus-in 'if -F "#{==:#{@cc_state},attention}" "set -w @cc_state idle"'
+# NOT pane-focus-in: that fires on OS-level terminal focus, not tmux window
+# switching, and is gated behind focus-events (off by default) — it never fires
+# here. session-window-changed fires on every switch path.
+set-hook -g session-window-changed 'if -F "#{==:#{@cc_state},attention}" "set -w @cc_state idle"'
 ```
 
 - [ ] **Step 6: Register the Claude hooks**
