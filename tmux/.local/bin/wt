@@ -11,6 +11,8 @@ usage: wt <command>
   close          kill the current window (worktree is left on disk)
   new <branch>   create a worktree at <repo>-worktrees/<branch> and open it
   menu           fzf popup over every worktree; Enter opens it
+  adopt [path]   re-point THIS window at [path] (default: \$PWD), for when a
+                 session moved into a worktree without changing windows
 EOF
   exit 2
 }
@@ -123,6 +125,35 @@ wt_menu() {
     "sel=\$($self _pick); [ -n \"\$sel\" ] && $self open \"\$sel\""
 }
 
+# Re-point the CURRENT window at a worktree, in place. This exists because a
+# Claude session can move itself into a worktree mid-session (EnterWorktree)
+# without the tmux window following: the pane's cwd is unchanged, so the window
+# keeps tracking whatever `wt open` set. Adoption fixes the tracking without
+# closing the session or opening a second window.
+wt_adopt() {
+  require_tmux
+  target=${1:-$PWD}
+  [ -d "$target" ] || { echo "wt: no such directory: $target" >&2; exit 1; }
+
+  root=$(git -C "$target" rev-parse --show-toplevel 2>/dev/null) || {
+    echo "wt: not inside a git worktree: $target" >&2
+    exit 1
+  }
+
+  cur=$(tmux display -p '#{window_id}')
+  other=$(wt_window_for_path "$root" || true)
+  if [ -n "$other" ] && [ "$other" != "$cur" ]; then
+    echo "wt: $root is already tracked by window $other" >&2
+    exit 1
+  fi
+
+  tmux set -w -t "$cur" @wt_path "$root"
+  br=$(git -C "$root" branch --show-current 2>/dev/null || true)
+  [ -n "$br" ] || br=$(git -C "$root" rev-parse --short HEAD 2>/dev/null || echo detached)
+  tmux rename-window -t "$cur" "$(wt_sanitize_window "$br")"
+  printf 'adopted %s\n' "$root"
+}
+
 cmd=${1:-}
 [ -n "$cmd" ] || usage
 shift || true
@@ -133,6 +164,7 @@ case "$cmd" in
   close) wt_close ;;
   new)   [ $# -ge 1 ] || usage; wt_new "$1" ;;
   menu)  wt_menu ;;
+  adopt) wt_adopt "${1:-$PWD}" ;;
   _rows) wt_rows ;;
   _pick) wt_pick ;;
   *)     usage ;;
