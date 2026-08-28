@@ -9,7 +9,10 @@ usage: wt <command>
   list           TSV of every worktree: repo, path, branch, window_id
   open <path>    focus the window for <path>, creating it if needed
   close          kill the current window (worktree is left on disk)
-  new <branch>   create a worktree at <repo>-worktrees/<branch> and open it
+  new <branch> [dir]
+                 create a worktree at <repo>-worktrees/<branch> and open it.
+                 [dir] selects the repo (default: \$PWD) -- a keybinding must
+                 pass it, since run-shell does not inherit the pane's cwd
   menu           fzf popup over every worktree; Enter opens it
   adopt [path]   re-point THIS window at [path] (default: \$PWD), for when a
                  session moved into a worktree without changing windows
@@ -67,10 +70,17 @@ wt_close() {
   fi
 }
 
+# The context directory is an explicit argument because run-shell hands a
+# command the INVOKER's cwd, not the pane's -- so from a keybinding $PWD is
+# wherever the tmux client was attached from. Relying on it either failed
+# outright (client attached outside a repo) or, worse, silently created the
+# worktree in the wrong repo. The binding passes #{pane_current_path}.
 wt_new() {
   branch=$1
+  ctx=${2:-$PWD}
   require_tmux
-  main=$(wt_main_for "$PWD") || { echo "wt: not in a git repo" >&2; exit 1; }
+  [ -d "$ctx" ] || { echo "wt: no such directory: $ctx" >&2; exit 1; }
+  main=$(wt_main_for "$ctx") || { echo "wt: not in a git repo: $ctx" >&2; exit 1; }
   parent=$(dirname "$main")
   repo=$(basename "$main")
   dir="$parent/$repo-worktrees/$(wt_sanitize_window "$branch")"
@@ -162,7 +172,7 @@ case "$cmd" in
   list)  wt_list ;;
   open)  [ $# -ge 1 ] || usage; wt_open "$1" ;;
   close) wt_close ;;
-  new)   [ $# -ge 1 ] || usage; wt_new "$1" ;;
+  new)   [ $# -ge 1 ] || usage; wt_new "$1" "${2:-$PWD}" ;;
   menu)  wt_menu ;;
   adopt) wt_adopt "${1:-$PWD}" ;;
   _rows) wt_rows ;;
