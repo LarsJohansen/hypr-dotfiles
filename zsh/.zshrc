@@ -140,3 +140,25 @@ fi
 # export PATH="$HOME/.dotnet:$PATH"
 # export DOTNET_ROOT="$HOME/.dotnet"
 
+
+# fnm -- Node version manager. Installed at ~/.local/bin/fnm, Node builds under
+# ~/.local/share/fnm. Deliberately last in this file: it prepends to PATH, so it must
+# come after the ~/.npm-global/bin line above for fnm's Node to be the one that wins.
+#
+# --use-on-cd switches Node on entering a directory with a .nvmrc (or a package.json
+# whose "engines" names a version). third-shift pins Node 24 this way, because Node 26
+# breaks `pnpm exec playwright install` in its extract step and the symptom -- a
+# download that appears to hang -- points nowhere near the Node version.
+#
+# NOTE: `fnm install 24` created a `default` alias by itself, so Node 24 is now the
+# machine-wide default -- every new shell gets it, not only pinned directories. That
+# was a side effect of installing rather than a decision. It is defensible (24 is
+# Active LTS; the system's 26 is Current), but it does mean one project's pin changed
+# the default Node for every other project on this machine.
+# To go back to "system Node unless a directory pins otherwise":
+#   rm ~/.local/share/fnm/aliases/default
+# Arch's Node stays reachable either way, as /usr/bin/node or via `fnm use system`.
+if command -v fnm >/dev/null 2>&1; then
+  export FNM_DIR="$HOME/.local/share/fnm"
+  eval "$(fnm env --use-on-cd --shell zsh)"
+fi
