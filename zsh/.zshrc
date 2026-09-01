@@ -111,6 +111,7 @@ export PATH="$PATH:/home/lars/.local/bin"
 eval $(thefuck --alias)
 
 ## Tmux sessions
+export WT_5H_BUDGET=581100000
 workon() {
   local name=$(basename "$PWD")
   tmux has-session -t "$name" 2>/dev/null
