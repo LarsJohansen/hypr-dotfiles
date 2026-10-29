@@ -6,7 +6,9 @@ export PATH="$WT_REPO_ROOT/.local/bin:$PATH"
 TMUX_SOCK=wt-test
 
 wt_test_setup() {
-  WT_TMP=$(mktemp -d)
+  # pwd -P: macOS mktemp hands out /var/..., a symlink to /private/var/...,
+  # and git reports the resolved form, so expected paths must match it.
+  WT_TMP=$(CDPATH= cd -- "$(mktemp -d)" && pwd -P)
   export WT_TMP
   export WT_ROOTS="$WT_TMP/projects"
   # Redirect tmux's socket lookup into the scratch dir and drop any

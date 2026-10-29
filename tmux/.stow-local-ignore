@@ -1,0 +1,2 @@
+# tests run from the repo (tmux/tests/run.sh); they must not land in ~
+^/tests$
