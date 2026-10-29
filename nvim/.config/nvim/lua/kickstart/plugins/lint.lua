@@ -50,8 +50,24 @@ return {
           -- Only run the linter in buffers that you can modify in order to
           -- avoid superfluous noise, notably within the handy LSP pop-ups that
           -- describe the hovered symbol using Markdown.
-          if vim.opt_local.modifiable:get() then
-            lint.try_lint()
+          if not vim.opt_local.modifiable:get() then
+            return
+          end
+          -- Skip linters whose executable isn't installed, so a missing tool
+          -- doesn't throw on every BufEnter (e.g. on a fresh machine).
+          local names = vim.tbl_filter(function(name)
+            local linter = lint.linters[name]
+            if type(linter) == 'function' then
+              linter = linter()
+            end
+            local cmd = linter and linter.cmd
+            if type(cmd) == 'function' then
+              cmd = cmd()
+            end
+            return cmd ~= nil and vim.fn.executable(cmd) == 1
+          end, lint._resolve_linter_by_ft(vim.bo.filetype))
+          if #names > 0 then
+            lint.try_lint(names)
           end
         end,
       })

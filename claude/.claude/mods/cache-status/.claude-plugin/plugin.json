@@ -1,0 +1,1 @@
+{ "name": "cache-status", "version": "0.1.0", "description": "Status line showing whether the prompt cache is warm or cold, for the main session and running subagents" }

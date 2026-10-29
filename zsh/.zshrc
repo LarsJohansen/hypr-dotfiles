@@ -65,6 +65,12 @@ alias ll='ls -lAh'
 alias grep='rg'
 alias g='git'
 
+# Claude in a Rikstoto repo or worktree, with the workspace CLAUDE.md and skills. The arguments go
+# before --add-dir, which takes several folders and would read a prompt after it as one more.
+if [[ -d "$HOME/dev/rikstoto" ]]; then
+  rclaude() { CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=1 claude "$@" --add-dir "$HOME/dev/rikstoto"; }
+fi
+
 # ─[ Prompt Title ]─────────────────────────────────────
 precmd() { print -Pn "\e]0;%n@%m: %~\a" }
 

@@ -1,0 +1,11 @@
+{
+  "name": "lars-mods",
+  "owner": { "name": "Lars Johansen" },
+  "plugins": [
+    {
+      "name": "cache-status",
+      "source": "./cache-status",
+      "description": "Status line showing whether the prompt cache is warm or cold, for the main session and running subagents"
+    }
+  ]
+}
