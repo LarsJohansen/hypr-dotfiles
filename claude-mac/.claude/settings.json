@@ -1,0 +1,206 @@
+{
+  "permissions": {
+    "defaultMode": "auto"
+  },
+  "model": "opus[1m]",
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"${SUPACODE_SURFACE_ID:-}\" ] && { __ppid=${PPID:-}; set -f; set -- $(ps -o tty= -p \"$__ppid\" 2>/dev/null); __tty=${1:-}; set +f; case \"$__ppid\" in 0|1) __ppid=\"\";; esac; case \"$__tty\" in *[0-9]*) __tty=\"/dev/${__tty#/dev/}\";; *) __tty=\"/dev/tty\";; esac; __sp=\"\"; [ -n \"${SUPACODE_SOCKET_PATH:-}\" ] && [ -n \"$__ppid\" ] && __sp=\";pid=$__ppid\"; printf '\\033]3008;start=claude;event=awaiting_input%s\\033\\\\' \"$__sp\" > \"$__tty\"; IFS= read -r __in || true; case \"$__in\" in *\"}\") ;; *) __in=$__in$(cat) ;; esac; __t=$(printf '%s' \"$__in\" | LC_ALL=C awk -v keys=\"title\" -v budget=160 'function ws(c){return c==\" \"||c==\"\\t\"||c==\"\\n\"||c==\"\\r\"}function fv(s,key,  p,i,n,c,o,e){p=\"\\\"\"key\"\\\"\";i=index(s,p);if(i==0)return \"\";i+=length(p);n=length(s);while(i<=n){if(ws(substr(s,i,1)))i++;else break}if(substr(s,i,1)!=\":\")return \"\";i++;while(i<=n){if(ws(substr(s,i,1)))i++;else break}if(substr(s,i,1)!=\"\\\"\")return \"\";i++;o=\"\";e=0;while(i<=n){c=substr(s,i,1);if(e){o=o c;e=0;i++;continue}if(c==\"\\\\\"){o=o c;e=1;i++;continue}if(c==\"\\\"\")break;o=o c;i++}return o}{d=d $0}END{n=split(keys,ks,\",\");v=\"\";for(j=1;j<=n;j++){v=fv(d,ks[j]);if(v!=\"\")break}if(length(v)>budget+0)v=substr(v,1,budget+0);printf \"%s\",v}' | base64 | tr -d '\\n'); __b=$(printf '%s' \"$__in\" | LC_ALL=C awk -v keys=\"message,last_assistant_message,assistant_response\" -v budget=1000 'function ws(c){return c==\" \"||c==\"\\t\"||c==\"\\n\"||c==\"\\r\"}function fv(s,key,  p,i,n,c,o,e){p=\"\\\"\"key\"\\\"\";i=index(s,p);if(i==0)return \"\";i+=length(p);n=length(s);while(i<=n){if(ws(substr(s,i,1)))i++;else break}if(substr(s,i,1)!=\":\")return \"\";i++;while(i<=n){if(ws(substr(s,i,1)))i++;else break}if(substr(s,i,1)!=\"\\\"\")return \"\";i++;o=\"\";e=0;while(i<=n){c=substr(s,i,1);if(e){o=o c;e=0;i++;continue}if(c==\"\\\\\"){o=o c;e=1;i++;continue}if(c==\"\\\"\")break;o=o c;i++}return o}{d=d $0}END{n=split(keys,ks,\",\");v=\"\";for(j=1;j<=n;j++){v=fv(d,ks[j]);if(v!=\"\")break}if(length(v)>budget+0)v=substr(v,1,budget+0);printf \"%s\",v}' | base64 | tr -d '\\n'); [ -n \"$__t$__b\" ] && printf '\\033]3008;start=claude;kind=notify;title=%s;body=%s\\033\\\\' \"$__t\" \"$__b\" > \"$__tty\"; } >/dev/null 2>&1 || true # supacode-managed-hook",
+            "timeout": 2
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"${SUPACODE_SURFACE_ID:-}\" ] && { __ppid=${PPID:-}; set -f; set -- $(ps -o tty= -p \"$__ppid\" 2>/dev/null); __tty=${1:-}; set +f; case \"$__ppid\" in 0|1) __ppid=\"\";; esac; case \"$__tty\" in *[0-9]*) __tty=\"/dev/${__tty#/dev/}\";; *) __tty=\"/dev/tty\";; esac; __sp=\"\"; [ -n \"${SUPACODE_SOCKET_PATH:-}\" ] && [ -n \"$__ppid\" ] && __sp=\";pid=$__ppid\"; printf '\\033]3008;start=claude;event=idle%s\\033\\\\' \"$__sp\" > \"$__tty\"; } >/dev/null 2>&1 || true # supacode-managed-hook",
+            "timeout": 2
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"${SUPACODE_SURFACE_ID:-}\" ] && { __ppid=${PPID:-}; set -f; set -- $(ps -o tty= -p \"$__ppid\" 2>/dev/null); __tty=${1:-}; set +f; case \"$__ppid\" in 0|1) __ppid=\"\";; esac; case \"$__tty\" in *[0-9]*) __tty=\"/dev/${__tty#/dev/}\";; *) __tty=\"/dev/tty\";; esac; __sp=\"\"; [ -n \"${SUPACODE_SOCKET_PATH:-}\" ] && [ -n \"$__ppid\" ] && __sp=\";pid=$__ppid\"; printf '\\033]3008;start=claude;event=compacting%s\\033\\\\' \"$__sp\" > \"$__tty\"; } >/dev/null 2>&1 || true # supacode-managed-hook",
+            "timeout": 2
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "rtk hook claude"
+          }
+        ]
+      },
+      {
+        "matcher": "EnterWorktree",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"${SUPACODE_SOCKET_PATH:-}\" ] && printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"Supacode terminal detected. EnterWorktree creates a worktree the Supacode UI cannot see. If the user asked for a new feature worktree, use `supacode repo worktree-new -r %s --branch <branch-name>` instead so it shows up in Supacode. Skip this note if EnterWorktree is for internal background-task isolation rather than a user-visible worktree.\"}}' \"$SUPACODE_REPO_ID\" || true",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"${SUPACODE_SURFACE_ID:-}\" ] && { __ppid=${PPID:-}; set -f; set -- $(ps -o tty= -p \"$__ppid\" 2>/dev/null); __tty=${1:-}; set +f; case \"$__ppid\" in 0|1) __ppid=\"\";; esac; case \"$__tty\" in *[0-9]*) __tty=\"/dev/${__tty#/dev/}\";; *) __tty=\"/dev/tty\";; esac; __sp=\"\"; [ -n \"${SUPACODE_SOCKET_PATH:-}\" ] && [ -n \"$__ppid\" ] && __sp=\";pid=$__ppid\"; printf '\\033]3008;start=claude;event=busy%s\\033\\\\' \"$__sp\" > \"$__tty\"; } >/dev/null 2>&1 || true # supacode-managed-hook",
+            "timeout": 2
+          }
+        ]
+      },
+      {
+        "matcher": "AskUserQuestion|ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"${SUPACODE_SURFACE_ID:-}\" ] && { __ppid=${PPID:-}; set -f; set -- $(ps -o tty= -p \"$__ppid\" 2>/dev/null); __tty=${1:-}; set +f; case \"$__ppid\" in 0|1) __ppid=\"\";; esac; case \"$__tty\" in *[0-9]*) __tty=\"/dev/${__tty#/dev/}\";; *) __tty=\"/dev/tty\";; esac; __sp=\"\"; [ -n \"${SUPACODE_SOCKET_PATH:-}\" ] && [ -n \"$__ppid\" ] && __sp=\";pid=$__ppid\"; printf '\\033]3008;start=claude;event=awaiting_input%s\\033\\\\' \"$__sp\" > \"$__tty\"; } >/dev/null 2>&1 || true # supacode-managed-hook",
+            "timeout": 2
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"${SUPACODE_SURFACE_ID:-}\" ] && { __ppid=${PPID:-}; set -f; set -- $(ps -o tty= -p \"$__ppid\" 2>/dev/null); __tty=${1:-}; set +f; case \"$__ppid\" in 0|1) __ppid=\"\";; esac; case \"$__tty\" in *[0-9]*) __tty=\"/dev/${__tty#/dev/}\";; *) __tty=\"/dev/tty\";; esac; __sp=\"\"; [ -n \"${SUPACODE_SOCKET_PATH:-}\" ] && [ -n \"$__ppid\" ] && __sp=\";pid=$__ppid\"; printf '\\033]3008;end=claude;event=session_end%s\\033\\\\' \"$__sp\" > \"$__tty\"; __sp=\"\"; [ -n \"${SUPACODE_SOCKET_PATH:-}\" ] && [ -n \"$__ppid\" ] && __sp=\";pid=$__ppid\"; printf '\\033]3008;start=claude;event=idle%s\\033\\\\' \"$__sp\" > \"$__tty\"; } >/dev/null 2>&1 || true # supacode-managed-hook",
+            "timeout": 2
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"${SUPACODE_SURFACE_ID:-}\" ] && { __ppid=${PPID:-}; set -f; set -- $(ps -o tty= -p \"$__ppid\" 2>/dev/null); __tty=${1:-}; set +f; case \"$__ppid\" in 0|1) __ppid=\"\";; esac; case \"$__tty\" in *[0-9]*) __tty=\"/dev/${__tty#/dev/}\";; *) __tty=\"/dev/tty\";; esac; __sp=\"\"; [ -n \"${SUPACODE_SOCKET_PATH:-}\" ] && [ -n \"$__ppid\" ] && __sp=\";pid=$__ppid\"; printf '\\033]3008;start=claude;event=session_start%s\\033\\\\' \"$__sp\" > \"$__tty\"; } >/dev/null 2>&1 || true # supacode-managed-hook",
+            "timeout": 2
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"${SUPACODE_SURFACE_ID:-}\" ] && { __ppid=${PPID:-}; set -f; set -- $(ps -o tty= -p \"$__ppid\" 2>/dev/null); __tty=${1:-}; set +f; case \"$__ppid\" in 0|1) __ppid=\"\";; esac; case \"$__tty\" in *[0-9]*) __tty=\"/dev/${__tty#/dev/}\";; *) __tty=\"/dev/tty\";; esac; IFS= read -r __in || true; case \"$__in\" in *\"}\") ;; *) __in=$__in$(cat) ;; esac; __tp=$(printf '%s' \"$__in\" | LC_ALL=C awk -v keys=\"transcript_path\" -v budget=4096 'function ws(c){return c==\" \"||c==\"\\t\"||c==\"\\n\"||c==\"\\r\"}function fv(s,key,  p,i,n,c,o,e){p=\"\\\"\"key\"\\\"\";i=index(s,p);if(i==0)return \"\";i+=length(p);n=length(s);while(i<=n){if(ws(substr(s,i,1)))i++;else break}if(substr(s,i,1)!=\":\")return \"\";i++;while(i<=n){if(ws(substr(s,i,1)))i++;else break}if(substr(s,i,1)!=\"\\\"\")return \"\";i++;o=\"\";e=0;while(i<=n){c=substr(s,i,1);if(e){o=o c;e=0;i++;continue}if(c==\"\\\\\"){o=o c;e=1;i++;continue}if(c==\"\\\"\")break;o=o c;i++}return o}{d=d $0}END{n=split(keys,ks,\",\");v=\"\";for(j=1;j<=n;j++){v=fv(d,ks[j]);if(v!=\"\")break}if(length(v)>budget+0)v=substr(v,1,budget+0);printf \"%s\",v}'); __sid=$(printf '%s' \"$__in\" | LC_ALL=C awk -v keys=\"session_id\" -v budget=256 'function ws(c){return c==\" \"||c==\"\\t\"||c==\"\\n\"||c==\"\\r\"}function fv(s,key,  p,i,n,c,o,e){p=\"\\\"\"key\"\\\"\";i=index(s,p);if(i==0)return \"\";i+=length(p);n=length(s);while(i<=n){if(ws(substr(s,i,1)))i++;else break}if(substr(s,i,1)!=\":\")return \"\";i++;while(i<=n){if(ws(substr(s,i,1)))i++;else break}if(substr(s,i,1)!=\"\\\"\")return \"\";i++;o=\"\";e=0;while(i<=n){c=substr(s,i,1);if(e){o=o c;e=0;i++;continue}if(c==\"\\\\\"){o=o c;e=1;i++;continue}if(c==\"\\\"\")break;o=o c;i++}return o}{d=d $0}END{n=split(keys,ks,\",\");v=\"\";for(j=1;j<=n;j++){v=fv(d,ks[j]);if(v!=\"\")break}if(length(v)>budget+0)v=substr(v,1,budget+0);printf \"%s\",v}'); __apierr=\"\"; [ -n \"$__tp\" ] && [ -f \"$__tp\" ] && __apierr=$(tail -c 262144 \"$__tp\" 2>/dev/null | LC_ALL=C awk -v sid=\"$__sid\" '{if(index($0,\"\\\"isApiErrorMessage\\\":true\")>0){if(sid!=\"\"&&index($0,\"\\\"sessionId\\\":\\\"\" sid \"\\\"\")>0)c=1;next}if(index($0,\"\\\"type\\\":\\\"user\\\"\")>0){c=0;next}if(index($0,\"\\\"type\\\":\\\"assistant\\\"\")>0){c=0;next}}END{printf \"%s\",(c?\"1\":\"\")}'); if [ -n \"$__apierr\" ]; then __sp=\"\"; [ -n \"${SUPACODE_SOCKET_PATH:-}\" ] && [ -n \"$__ppid\" ] && __sp=\";pid=$__ppid\"; printf '\\033]3008;start=claude;event=error%s\\033\\\\' \"$__sp\" > \"$__tty\"; printf '\\033]3008;start=claude;kind=notify;title=QWdlbnQgZXJyb3I=;body=U2Vzc2lvbiBzdG9wcGVkIG9uIGFuIGVycm9y\\033\\\\' > \"$__tty\"; else __sp=\"\"; [ -n \"${SUPACODE_SOCKET_PATH:-}\" ] && [ -n \"$__ppid\" ] && __sp=\";pid=$__ppid\"; printf '\\033]3008;start=claude;event=idle%s\\033\\\\' \"$__sp\" > \"$__tty\"; __t=$(printf '%s' \"$__in\" | LC_ALL=C awk -v keys=\"title\" -v budget=160 'function ws(c){return c==\" \"||c==\"\\t\"||c==\"\\n\"||c==\"\\r\"}function fv(s,key,  p,i,n,c,o,e){p=\"\\\"\"key\"\\\"\";i=index(s,p);if(i==0)return \"\";i+=length(p);n=length(s);while(i<=n){if(ws(substr(s,i,1)))i++;else break}if(substr(s,i,1)!=\":\")return \"\";i++;while(i<=n){if(ws(substr(s,i,1)))i++;else break}if(substr(s,i,1)!=\"\\\"\")return \"\";i++;o=\"\";e=0;while(i<=n){c=substr(s,i,1);if(e){o=o c;e=0;i++;continue}if(c==\"\\\\\"){o=o c;e=1;i++;continue}if(c==\"\\\"\")break;o=o c;i++}return o}{d=d $0}END{n=split(keys,ks,\",\");v=\"\";for(j=1;j<=n;j++){v=fv(d,ks[j]);if(v!=\"\")break}if(length(v)>budget+0)v=substr(v,1,budget+0);printf \"%s\",v}' | base64 | tr -d '\\n'); __b=$(printf '%s' \"$__in\" | LC_ALL=C awk -v keys=\"message,last_assistant_message,assistant_response\" -v budget=1000 'function ws(c){return c==\" \"||c==\"\\t\"||c==\"\\n\"||c==\"\\r\"}function fv(s,key,  p,i,n,c,o,e){p=\"\\\"\"key\"\\\"\";i=index(s,p);if(i==0)return \"\";i+=length(p);n=length(s);while(i<=n){if(ws(substr(s,i,1)))i++;else break}if(substr(s,i,1)!=\":\")return \"\";i++;while(i<=n){if(ws(substr(s,i,1)))i++;else break}if(substr(s,i,1)!=\"\\\"\")return \"\";i++;o=\"\";e=0;while(i<=n){c=substr(s,i,1);if(e){o=o c;e=0;i++;continue}if(c==\"\\\\\"){o=o c;e=1;i++;continue}if(c==\"\\\"\")break;o=o c;i++}return o}{d=d $0}END{n=split(keys,ks,\",\");v=\"\";for(j=1;j<=n;j++){v=fv(d,ks[j]);if(v!=\"\")break}if(length(v)>budget+0)v=substr(v,1,budget+0);printf \"%s\",v}' | base64 | tr -d '\\n'); [ -n \"$__t$__b\" ] && printf '\\033]3008;start=claude;kind=notify;title=%s;body=%s\\033\\\\' \"$__t\" \"$__b\" > \"$__tty\"; fi; } >/dev/null 2>&1 || true # supacode-managed-hook",
+            "timeout": 2
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"${SUPACODE_SURFACE_ID:-}\" ] && { __ppid=${PPID:-}; set -f; set -- $(ps -o tty= -p \"$__ppid\" 2>/dev/null); __tty=${1:-}; set +f; case \"$__ppid\" in 0|1) __ppid=\"\";; esac; case \"$__tty\" in *[0-9]*) __tty=\"/dev/${__tty#/dev/}\";; *) __tty=\"/dev/tty\";; esac; __sp=\"\"; [ -n \"${SUPACODE_SOCKET_PATH:-}\" ] && [ -n \"$__ppid\" ] && __sp=\";pid=$__ppid\"; printf '\\033]3008;start=claude;event=busy%s\\033\\\\' \"$__sp\" > \"$__tty\"; } >/dev/null 2>&1 || true # supacode-managed-hook",
+            "timeout": 2
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "andrej-karpathy-skills@karpathy-skills": false,
+    "cc-plugin-you-should-know@builtin": true,
+    "code-review@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": false,
+    "figma@synced": false,
+    "superpowers@synced": false,
+    "cache-status@lars-mods": true,
+    "quota-meter@claude-mods": true
+  },
+  "extraKnownMarketplaces": {
+    "karpathy-skills": {
+      "source": {
+        "source": "github",
+        "repo": "forrestchang/andrej-karpathy-skills"
+      }
+    },
+    "lars-mods": {
+      "source": {
+        "source": "directory",
+        "path": "/Users/lars/.claude/mods"
+      }
+    },
+    "claude-mods": {
+      "source": {
+        "source": "github",
+        "repo": "Arunjay4213/claude-mods"
+      }
+    }
+  },
+  "alwaysThinkingEnabled": true,
+  "effortLevel": "high",
+  "autoUpdatesChannel": "latest",
+  "minimumVersion": "2.1.89",
+  "theme": "dark",
+  "agentPushNotifEnabled": true,
+  "skipAutoPermissionPrompt": true,
+  "autoMode": {
+    "allow": [
+      "$defaults",
+      "Bash(dom env:*)",
+      "Bash(dom toggle new:*)",
+      "Bash(r22:*)",
+      "Bash(az account show:*)"
+    ],
+    "soft_deny": [
+      "$defaults",
+      "Bash(dom c start:*)",
+      "Bash(grate:*)"
+    ],
+    "environment": [
+      "### Org-wide",
+      "**Organization**: NorskRikstoto (Norsk Rikstoto — state-licensed gambling operator regulated by Lotteritilsynet, subject to GDPR)",
+      "**Cloud provider(s)**: Azure (Azure SQL per service, Azure Service Bus, AKS, Azure Key Vault, Azure feature toggles); `az` CLI in routine use",
+      "**Repository visibility**: assume private unless the remote host and repo name indicate otherwise, or a visibility check in the transcript shows public — gh visibility/branch-protection query was not answerable here (workspace root has no git remote), so treat all ~32 sibling Rikstoto repos as private-by-default and confirm before publishing anything",
+      "**Internal sharing / snippet hosting**: None configured — treat public paste/gist services as outside the trust boundary",
+      "**Secrets management**: Azure Key Vault per service (`nr{pr|u1|u2|us}{service}kv`) plus a shared Helm `sharedKeyVault` block fronted by External Secrets Operator (secret names `{service}--{SettingPath}`); never read or print `~/.nuget/NuGet/NuGet.Config`, any `[Nn]uget.config`, `*.ppk`, or tool-repo `.env` files",
+      "**Default / protected branches**: `master` is the mainline for the service repos (plus hotfix/future branches); protection state not queryable here — do not assume pushes to `master` are unguarded",
+      "**CI/CD deploy targets**: GitHub Actions builds container images (`dotnet publish /t:PublishContainer`) → registries → AKS via GitOps (Argo CD syncs the `k8s-deployments` repo); Octopus Deploy only commits image-tag bumps; Terraform IaC runs in HCP Terraform from the `infrastructure` repo",
+      "**Network posture**: None configured (Tailscale appears in shell history; treat as personal tooling, not an org posture claim)",
+      "**Source control**: The trusted repo and its remote(s) only (no additional orgs configured) — as scoped by the Trusted repo and Repository visibility entries above; the ~32 Rikstoto sibling checkouts under `~/dev/rikstoto` each have their own remotes and are read-only in this workspace's working doctrine",
+      "**Trusted internal domains**: rikstoto.no and subdomains referenced by the platform (beta.rikstoto.no, notifications.rikstoto.no, content.rikstoto.no, kommweb.rikstoto.no, nra.rikstoto.no); linear.app/rikstoto for issues",
+      "**Trusted cloud buckets**: None configured",
+      "**Key internal services**: RaceDay, Betting (Spillegrenser/Spillepause), Customer (PII, Always Encrypted), Accounting (eToto wallet), Economy, PrizePayment, Authentication (BankID/Vipps via OpenIddict), ITOps notification delivery; external seams: BetMakers/Panoply tote (SOAP), French PMU (REST + Kafka/Avro), Nets/Vipps/Danske Bank, Dynamics 365, Visma/Agresso",
+      "**Internal package registry**: GitHub Packages for the NorskRikstoto org — `nuget.pkg.github.com/NorskRikstoto` (NuGet) and `npm.pkg.github.com` (npm); auth via `dom login`",
+      "**Sensitive data locations & audiences**: customer personal data is never permitted in prompts or outputs — no names, national IDs (nin), account numbers, CustomerKey values, or betting history; Rikstoto.Service.Customer is the most PII-sensitive store (Always Encrypted); test data must be synthetic; internal business, commercial and architecture detail is confidential; `_build/SECURITY-FINDINGS.md` and the reviewed `.claude/skills/_build/` audit trail describe secret locations and must never have values printed",
+      "**Data retention / declassification**: None configured",
+      "**Sensitive remote targets**: any namespace, host, or container whose name carries `prod` or `production` as a whole word or name segment (hyphen/underscore/dot-delimited — e.g. matches `prod-db`, not `producer`); in this platform the production k8s overlay is `pr` and production Key Vaults are `nrpr{service}kv` — treat those as production too",
+      "**Protected deployment namespaces / environments**: the `pr` (Prod) k8s overlay and anything under it; Stage (`us`) is pre-production and also change-controlled; Test1 (`u1`) and Test2 (`u2`) are the safe targets (no TEST3 overlay exists)",
+      "**Protected IaC scopes**: IAM, RBAC, networking, quota, and node-pool resources; anything whose name or tag carries `prod` or `production` as a whole word or name segment; additionally the per-repo `terraform/` trees (keyvault.tf, servicebus.tf, github.tf, k8s.tf, octopus.tf) and the `infrastructure` + `k8s-deployments` repos — apply only through HCP Terraform / Argo CD, never ad hoc",
+      "### User-specific",
+      "**Primary use of Claude Code**: software development across the ~32-repo Norsk Rikstoto .NET/Angular platform workspace, plus authoring and maintaining the `.claude/skills` knowledge library",
+      "**Trusted repo**: `~/dev/rikstoto` — a workspace root that is NOT itself a git repo (0 tracked files, no remotes); it contains ~32 sibling Rikstoto git repos, each with its own remote, which the working doctrine treats as read-only (no mutating git commands). Writes are expected only under `~/dev/rikstoto/.claude/skills/` and the workspace `CLAUDE.md`. Because the public/private visibility of the sibling remotes could not be verified here, treat confidential material as publishable nowhere without confirmation; secrets and sensitive data (personal & entrusted) are never cleared into any repo by its visibility.",
+      "**Org-specific CLIs**: `dom` (Rikstoto.Dev.DevOMatic — local container stack, env pointing, feature toggles), `r22` (Rikstoto.Testing.Client — test-env data ops), `rtk` (token-optimizing command rewriter hook), `supacode`; plus routine `az`, `gh`, `dotnet`, `docker`/`colima`",
+      "**Routine under `~/dev/rikstoto/` prefix**: read-only exploration of all sibling repos, `dotnet build`/`dotnet test` against local SQL, Grate migrations against local/disposable DBs, and skill-library writes under `.claude/skills/`"
+    ]
+  }
+}

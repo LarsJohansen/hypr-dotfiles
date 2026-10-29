@@ -1,0 +1,2 @@
+# The ignore-all .gitignore guards the repo, it is not Claude config
+^/\.claude/\.gitignore$

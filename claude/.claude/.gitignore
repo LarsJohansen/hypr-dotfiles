@@ -1,4 +1,6 @@
-# ~/.claude is stow-symlinked into this repo, so Claude Code writes ALL of its
+# ~/.claude is a real folder on both machines; stow links only the entries in
+# this package (and claude-mac/ or claude-linux/) into it. Should ~/.claude ever
+# be a folder symlink into this repo again, Claude Code writes ALL of its
 # runtime state (session transcripts, caches, logs, plugins, telemetry, auth
 # tokens) here. Ignore everything by default and whitelist only the real,
 # portable config worth version-controlling.
@@ -23,3 +25,14 @@
 !commands/**
 !hooks/
 !hooks/**
+
+# Personal mods, served as the local marketplace "lars-mods" (engine-generated types stay out)
+!mods/
+!mods/**
+mods/*/.claude-plugin/types/
+
+# Never in this (public) repo: org-synced skills and work-internal skills carry
+# confidential Norsk Rikstoto material; .trash is just deleted-skill copies.
+skills/synced/
+skills/.trash/
+skills/rikstoto-delegate/
