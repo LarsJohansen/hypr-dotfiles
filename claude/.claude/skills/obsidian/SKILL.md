@@ -8,9 +8,30 @@ description: Standards for reading from and writing to Lars's Obsidian vault
 ## Purpose
 Defines standards for all agents to read from and write to Lars's Obsidian vault, ensuring consistent structure, naming, and cross-referencing.
 
+## ⚠️ Never leak vault references into team-facing systems
+
+The vault is Lars's **personal** knowledge base — no one else on his team has access to it. Never mention Obsidian, link to a vault note, or use `[[wikilink]]` syntax in anything a teammate might read: Linear issue descriptions/comments, Confluence pages, GitHub PR/issue descriptions or comments, Slack messages, commit messages, or any other team-facing artifact.
+
+When a finding has been written up in the vault and also needs to go into one of those systems, **inline the actually-relevant content directly** — don't just point at the vault note as if it were a shared resource. The vault supports Lars's own reference and cross-session continuity; team-facing artifacts must stand alone and be readable by someone with zero vault access.
+
+```markdown
+# ❌ Bad — dead link to everyone but Lars
+Full findings written up in [[sp_getapplock Contention — Investigation Findings]].
+
+# ✅ Good — the relevant content, inlined
+[the actual findings, quoted or summarized directly in the ticket/PR/page]
+```
+
 ## Vault Location
-- **Vault Root**: `/home/lars/Documents/Productivity`
-- **Projects Base**: `/home/lars/Documents/Productivity/02 Projects`
+
+Paths differ by machine. Detect using `uname -s`:
+
+| Machine | `uname -s` | Vault Root | Projects Base |
+|---------|-----------|------------|---------------|
+| Linux   | `Linux`   | `/home/lars/Documents/Productivity` | `/home/lars/Documents/Productivity/02 Projects` |
+| macOS   | `Darwin`  | `/Users/lars/Documents/Productivity` | `/Users/lars/Documents/Productivity/02 Projects` |
+
+**Before any file operation**, run `uname -s` to determine the correct base path, then use it for all subsequent paths in the session.
 
 ## Project Structure
 Projects are organized by category:
@@ -412,11 +433,14 @@ Brief description of what this project is.
 
 ### Finding a Project
 ```bash
+# Detect machine first
+PROJECTS_BASE=$([ "$(uname -s)" = "Darwin" ] && echo "/Users/lars/Documents/Productivity/02 Projects" || echo "/home/lars/Documents/Productivity/02 Projects")
+
 # If project name known
-cd "/home/lars/Documents/Productivity/02 Projects/[Category]/[Project Name]"
+cd "$PROJECTS_BASE/[Category]/[Project Name]"
 
 # If searching for project
-find "/home/lars/Documents/Productivity/02 Projects" -name "*project-name*" -type d
+find "$PROJECTS_BASE" -name "*project-name*" -type d
 ```
 
 ### Creating Folder Structure

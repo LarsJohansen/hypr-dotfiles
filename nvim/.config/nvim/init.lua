@@ -230,12 +230,8 @@ require("custom.methodmove").setup()
 
 -- Keybinds to make split navigation easier.
 --  Use CTRL+<hjkl> to switch between windows
---
+--  Handled by vim-tmux-navigator plugin for seamless tmux integration
 --  See `:help wincmd` for a list of all window commands
-vim.keymap.set("n", "<C-h>", "<C-w><C-h>", { desc = "Move focus to the left window" })
-vim.keymap.set("n", "<C-l>", "<C-w><C-l>", { desc = "Move focus to the right window" })
-vim.keymap.set("n", "<C-j>", "<C-w><C-j>", { desc = "Move focus to the lower window" })
-vim.keymap.set("n", "<C-k>", "<C-w><C-k>", { desc = "Move focus to the upper window" })
 
 -- Window resizing keybinds
 vim.keymap.set("n", "<C-Up>", ":resize +2<CR>", { desc = "Increase window height" })
@@ -304,6 +300,9 @@ vim.opt.rtp:prepend(lazypath)
 require("lazy").setup({
 	-- NOTE: Plugins can be added with a link (or for a github repo: 'owner/repo' link).
 	"tpope/vim-sleuth", -- Detect tabstop and shiftwidth automatically
+
+	-- Seamless tmux + vim navigation
+	"christoomey/vim-tmux-navigator",
 
 	-- NOTE: Plugins can also be added by using a table,
 	-- with the first argument being the link and the following
@@ -469,7 +468,11 @@ require("lazy").setup({
 			vim.keymap.set("n", "<leader>gh", "<cmd>DiffviewFileHistory %<cr>", { desc = "Git [H]istory (file)" })
 			vim.keymap.set("n", "<leader>gH", "<cmd>DiffviewFileHistory<cr>", { desc = "Git [H]istory (project)" })
 			vim.keymap.set("n", "<leader>gq", "<cmd>DiffviewClose<cr>", { desc = "[Q]uit Diffview" })
-			vim.keymap.set("n", "<leader>gm", "<cmd>DiffviewOpen main<cr>", { desc = "Compare branch with main" })
+			vim.keymap.set("n", "<leader>gm", function()
+				vim.fn.system("git rev-parse --verify main 2>/dev/null")
+				local branch = vim.v.shell_error == 0 and "main" or "master"
+				vim.cmd("DiffviewOpen " .. branch)
+			end, { desc = "Compare branch with main/master" })
 			vim.keymap.set("n", "<leader>gr", "<cmd>DiffviewOpen main..HEAD<cr>", { desc = "Review branch changes" })
 			vim.keymap.set("n", "<leader>gl", "<cmd>DiffviewOpen HEAD~1<cr>", { desc = "Compare with last commit" })
 		end,
@@ -1505,25 +1508,20 @@ require("lazy").setup({
 		"nvim-treesitter/nvim-treesitter-textobjects",
 		dependencies = { "nvim-treesitter/nvim-treesitter" },
 	},
-	{ "nvim-treesitter/playground", cmd = "TSPlaygroundToggle" },
 	{ -- Highlight, edit, and navigate code
 		"nvim-treesitter/nvim-treesitter",
 		build = ":TSUpdate",
-		main = "nvim-treesitter.configs", -- Sets main module to use for opts
 		-- [[ Configure Treesitter ]] See `:help nvim-treesitter`
+		config = function(_, opts)
+			require("nvim-treesitter.install").prefer_git = true
+			require("nvim-treesitter.configs").setup(opts)
+		end,
 		opts = {
 			ensure_installed = {
-				"bash",
-				"c",
+				-- Parsers bundled with Neovim 0.11+ are excluded (bash, c, lua, luadoc,
+				-- markdown, markdown_inline, query, vim, vimdoc) to avoid conflicts.
 				"diff",
 				"html",
-				"lua",
-				"luadoc",
-				"markdown",
-				"markdown_inline",
-				"query",
-				"vim",
-				"vimdoc",
 				"c_sharp",
 			},
 			-- Autoinstall languages that are not installed
@@ -1661,6 +1659,11 @@ vim.api.nvim_create_autocmd("ColorScheme", {
 		]])
 	end,
 })
+
+-- vim-tmux-navigator configuration
+vim.g.tmux_navigator_no_mappings = 0
+vim.g.tmux_navigator_save_on_switch = 2
+vim.g.tmux_navigator_disable_when_zoomed = 1
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
