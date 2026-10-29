@@ -5,7 +5,7 @@ _d=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 usage() {
   cat >&2 <<EOF
-usage: wt <command>
+usage: wt [-d] [-p <file>] <command>
   list           TSV of every worktree: repo, path, branch, window_id
   open <path>    focus the window for <path>, creating it if needed
   close          kill the current window (worktree is left on disk)
@@ -16,8 +16,32 @@ usage: wt <command>
   menu           fzf popup over every worktree; Enter opens it
   adopt [path]   re-point THIS window at [path] (default: \$PWD), for when a
                  session moved into a worktree without changing windows
+
+  -d             open/new: create the window in the background, print its id,
+                 and work outside tmux too (for agents starting a worker)
+  -p <file>      open/new: start Claude with <file>'s contents as the prompt
+
+per-repo git config (e.g. via includeIf in ~/.gitconfig):
+  wt.dir         worktree folder relative to the repo, instead of the sibling
+                 <repo>-worktrees/
+  wt.base        start point for a new branch (default: the repo's HEAD);
+                 a remote ref is fetched first
+  wt.claude      command started in the left pane (default: claude)
 EOF
   exit 2
+}
+
+# wt_cfg <repo> <key> <default>
+wt_cfg() {
+  git -C "$1" config --get "wt.$2" 2>/dev/null || printf '%s' "$3"
+}
+
+# Command typed into the left pane. The prompt is read by the pane's own shell,
+# so a multi-line brief needs no quoting here; only the path is quoted.
+wt_claude_cmd() {
+  cmd=$(wt_cfg "$1" claude claude)
+  [ -n "$prompt" ] && cmd="$cmd \"\$(cat '$prompt')\""
+  printf '%s' "$cmd"
 }
 
 require_tmux() {
@@ -26,11 +50,15 @@ require_tmux() {
 
 wt_open() {
   path=$1
-  require_tmux
+  [ -n "$detach" ] || require_tmux
   [ -d "$path" ] || { echo "wt: no such worktree: $path" >&2; exit 1; }
 
   existing=$(wt_window_for_path "$path" || true)
   if [ -n "$existing" ]; then
+    if [ -n "$detach" ]; then
+      printf '%s\n' "$existing"
+      return 0
+    fi
     tmux select-window -t "$existing"
     tmux switch-client -t "$existing" 2>/dev/null || true
     return 0
@@ -52,9 +80,14 @@ wt_open() {
   tmux set -w -t "$wid" @wt_path "$path"
   p0=$(tmux list-panes -t "$wid" -F '#{pane_id}' | head -n1)
   tmux split-window -h -l 35% -t "$p0" -c "$path"
-  # WT_SHELL=1 keeps tests from launching a real Claude session
-  [ -n "${WT_SHELL:-}" ] || tmux send-keys -t "$p0" 'claude' Enter
+  # WT_SHELL=1: plain shell, no Claude -- for tests, and for agents whose
+  # workers are subagents that only need the worktree path
+  [ -n "${WT_SHELL:-}" ] || tmux send-keys -t "$p0" "$(wt_claude_cmd "$main")" Enter
   tmux select-pane -t "$p0"
+  if [ -n "$detach" ]; then
+    printf '%s\n' "$wid"
+    return 0
+  fi
   tmux select-window -t "$wid"
   tmux switch-client -t "$wid" 2>/dev/null || true
 }
@@ -78,23 +111,38 @@ wt_close() {
 wt_new() {
   branch=$1
   ctx=${2:-$PWD}
-  require_tmux
+  [ -n "$detach" ] || require_tmux
   [ -d "$ctx" ] || { echo "wt: no such directory: $ctx" >&2; exit 1; }
   main=$(wt_main_for "$ctx") || { echo "wt: not in a git repo: $ctx" >&2; exit 1; }
   parent=$(dirname "$main")
   repo=$(basename "$main")
-  dir="$parent/$repo-worktrees/$(wt_sanitize_window "$branch")"
+  wtdir=$(wt_cfg "$main" dir '')
+  if [ -n "$wtdir" ]; then
+    wtdir="$main/$wtdir"
+  else
+    wtdir="$parent/$repo-worktrees"
+  fi
+  dir="$wtdir/$(wt_sanitize_window "$branch")"
 
   if [ -d "$dir" ]; then
     wt_open "$dir"
     return 0
   fi
 
-  mkdir -p "$parent/$repo-worktrees"
+  mkdir -p "$wtdir"
   if git -C "$main" show-ref --verify --quiet "refs/heads/$branch"; then
     git -C "$main" worktree add -q "$dir" "$branch"
   else
-    git -C "$main" worktree add -q -b "$branch" "$dir"
+    base=$(wt_cfg "$main" base HEAD)
+    # origin/HEAD and friends: fetch that remote so the branch starts from
+    # what is on the server now, not whenever it was last fetched.
+    remote=${base%%/*}
+    if [ "$remote" != "$base" ] && git -C "$main" remote | grep -qx "$remote"; then
+      git -C "$main" fetch -q "$remote"
+    fi
+    # --no-track: a branch off origin/<x> would otherwise track it, and a bare
+    # `git push` would then aim at that branch.
+    git -C "$main" worktree add -q --no-track -b "$branch" "$dir" "$base"
   fi
   wt_open "$dir"
 }
@@ -164,6 +212,19 @@ wt_adopt() {
   printf 'adopted %s\n' "$root"
 }
 
+detach=
+prompt=
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -d) detach=1; shift ;;
+    -p) [ $# -ge 2 ] || usage
+        [ -f "$2" ] || { echo "wt: no such prompt file: $2" >&2; exit 1; }
+        prompt=$(CDPATH= cd -- "$(dirname -- "$2")" && pwd)/$(basename -- "$2")
+        shift 2 ;;
+    *)  break ;;
+  esac
+done
+
 cmd=${1:-}
 [ -n "$cmd" ] || usage
 shift || true
@@ -177,5 +238,6 @@ case "$cmd" in
   adopt) wt_adopt "${1:-$PWD}" ;;
   _rows) wt_rows ;;
   _pick) wt_pick ;;
+  _cmd)  [ $# -ge 1 ] || usage; wt_claude_cmd "$(wt_main_for "$1")" ;;
   *)     usage ;;
 esac
