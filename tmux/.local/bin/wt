@@ -14,6 +14,7 @@ usage: wt [-d] [-p <file>] <command>
                  [dir] selects the repo (default: \$PWD) -- a keybinding must
                  pass it, since run-shell does not inherit the pane's cwd
   menu           fzf popup over every worktree; Enter opens it
+  live           fzf popup over every window running Claude; Enter jumps there
   adopt [path]   re-point THIS window at [path] (default: \$PWD), for when a
                  session moved into a worktree without changing windows
 
@@ -163,15 +164,32 @@ wt_rows() {
   done
 }
 
+# One row per window with a Claude pane, in any session, wt-managed or not.
+# Field 1 is the window id; the rest is display only. The process is
+# "claude" on Linux and "claude.exe" on macOS. WT_CLAUDE_PROCS overrides the
+# names for tests: macOS names a process after the real binary, so a stub
+# called claude cannot be faked there.
+wt_live_rows() {
+  tmux list-panes -a -F "#{window_id}${WT_TAB}#{pane_current_command}${WT_TAB}#{session_name}${WT_TAB}#{window_name}${WT_TAB}#{pane_current_path}" 2>/dev/null |
+    awk -F"$WT_TAB" -v home="$HOME" -v procs=" ${WT_CLAUDE_PROCS:-claude claude.exe} " '
+      index(procs, " " $2 " ") && !seen[$1]++ {
+        p = $5
+        if (index(p, home) == 1) p = "~" substr(p, length(home) + 1)
+        printf "%s\t%-28s %-22s %s\n", $1, $3, $4, p
+      }'
+}
+
+# wt_pick [rows-function] [prompt]
 wt_pick() {
+  rows=${1:-wt_rows}
   # WT_PICK_CMD replaces the whole picker; tests set it to something
   # deterministic. Overriding just the binary would break, because the fzf
   # flags below are not portable to another command.
   if [ -n "${WT_PICK_CMD:-}" ]; then
-    wt_rows | sh -c "$WT_PICK_CMD" | cut -f1
+    "$rows" | sh -c "$WT_PICK_CMD" | cut -f1
   else
-    wt_rows | fzf --with-nth=2.. --delimiter="$WT_TAB" --no-sort --reverse \
-      --prompt='worktree> ' 2>/dev/null | cut -f1
+    "$rows" | fzf --with-nth=2.. --delimiter="$WT_TAB" --no-sort --reverse \
+      --prompt="${2:-worktree}> " 2>/dev/null | cut -f1
   fi
 }
 
@@ -181,6 +199,13 @@ wt_menu() {
   self="$_d/wt"
   tmux display-popup -E -w 80% -h 60% \
     "sel=\$($self _pick); [ -n \"\$sel\" ] && $self open \"\$sel\""
+}
+
+wt_live() {
+  require_tmux
+  self="$_d/wt"
+  tmux display-popup -E -w 80% -h 60% \
+    "sel=\$($self _livepick); [ -n \"\$sel\" ] && tmux select-window -t \"\$sel\" && tmux switch-client -t \"\$sel\""
 }
 
 # Re-point the CURRENT window at a worktree, in place. This exists because a
@@ -235,9 +260,12 @@ case "$cmd" in
   close) wt_close ;;
   new)   [ $# -ge 1 ] || usage; wt_new "$1" "${2:-$PWD}" ;;
   menu)  wt_menu ;;
+  live)  wt_live ;;
   adopt) wt_adopt "${1:-$PWD}" ;;
   _rows) wt_rows ;;
   _pick) wt_pick ;;
+  _live) wt_live_rows ;;
+  _livepick) wt_pick wt_live_rows claude ;;
   _cmd)  [ $# -ge 1 ] || usage; wt_claude_cmd "$(wt_main_for "$1")" ;;
   *)     usage ;;
 esac
