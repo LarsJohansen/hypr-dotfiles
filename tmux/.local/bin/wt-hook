@@ -28,10 +28,13 @@ case "$state" in
     tmux set -w -t "$wid" -u @cc_elapsed 2>/dev/null || true
     ;;
   attention)
-    # If you are already looking at this window, there is nothing to flag.
+    # If you are already looking at this window, there is nothing to flag --
+    # but the turn is still over, so busy must not linger (on the Mac there is
+    # no wt-poll to clear it later).
     seen=$(tmux display -t "$wid" -p '#{&&:#{window_active},#{session_attached}}' 2>/dev/null || echo 0)
-    [ "$seen" = "1" ] && exit 0
-    tmux set -w -t "$wid" @cc_state attention 2>/dev/null || true
+    st=attention
+    [ "$seen" = "1" ] && st=idle
+    tmux set -w -t "$wid" @cc_state "$st" 2>/dev/null || true
     tmux set -w -t "$wid" @cc_since "$(date +%s)" 2>/dev/null || true
     ;;
   busy)
