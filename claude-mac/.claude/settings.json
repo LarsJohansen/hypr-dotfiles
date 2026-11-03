@@ -14,6 +14,15 @@
             "timeout": 2
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.local/bin/wt-hook attention",
+            "timeout": 2
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -90,6 +99,15 @@
             "timeout": 2
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.local/bin/wt-hook clear",
+            "timeout": 2
+          }
+        ]
       }
     ],
     "SessionStart": [
@@ -112,6 +130,15 @@
             "timeout": 2
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.local/bin/wt-hook attention",
+            "timeout": 2
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
@@ -120,6 +147,15 @@
           {
             "type": "command",
             "command": "[ -n \"${SUPACODE_SURFACE_ID:-}\" ] && { __ppid=${PPID:-}; set -f; set -- $(ps -o tty= -p \"$__ppid\" 2>/dev/null); __tty=${1:-}; set +f; case \"$__ppid\" in 0|1) __ppid=\"\";; esac; case \"$__tty\" in *[0-9]*) __tty=\"/dev/${__tty#/dev/}\";; *) __tty=\"/dev/tty\";; esac; __sp=\"\"; [ -n \"${SUPACODE_SOCKET_PATH:-}\" ] && [ -n \"$__ppid\" ] && __sp=\";pid=$__ppid\"; printf '\\033]3008;start=claude;event=busy%s\\033\\\\' \"$__sp\" > \"$__tty\"; } >/dev/null 2>&1 || true # supacode-managed-hook",
+            "timeout": 2
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.local/bin/wt-hook busy",
             "timeout": 2
           }
         ]
