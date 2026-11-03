@@ -38,6 +38,18 @@ wt_assert_eq "$(wt _live | grep -c .)" "1" "one row per window, not per pane"
 
 wt_assert_eq "$(WT_PICK_CMD='head -n1' wt _livepick)" "$LIVE" "_livepick prints the chosen window id"
 
+# wt-hook's state shows as a mark, and a window waiting for you comes first
+tmux -L "$TMUX_SOCK" new-window -t alpha -n second -c "$R" "sleep 30"
+SECOND=$(tmux -L "$TMUX_SOCK" list-windows -t alpha -F '#{window_id}' | tail -n1)
+sleep 0.3
+tmux -L "$TMUX_SOCK" set -w -t "$LIVE" @cc_state busy
+tmux -L "$TMUX_SOCK" set -w -t "$SECOND" @cc_state attention
+rows=$(wt _live)
+wt_assert_eq "$(printf '%s\n' "$rows" | head -n1 | cut -f1)" "$SECOND" "waiting window is listed first"
+wt_assert_contains "$(printf '%s\n' "$rows" | head -n1)" "●" "waiting window is marked ●"
+wt_assert_contains "$(printf '%s\n' "$rows" | grep "^$LIVE")" "◐" "working window is marked ◐"
+tmux -L "$TMUX_SOCK" kill-window -t "$SECOND"
+
 # the defaults match the real process names, and nothing else
 WT_CLAUDE_PROCS=
 unset WT_CLAUDE_PROCS
