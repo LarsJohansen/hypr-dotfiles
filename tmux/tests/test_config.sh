@@ -33,6 +33,18 @@ wt_assert_eq "$([ -d "$EXP" ] && echo yes || echo no)" "yes" "wt.dir places the 
 wt_assert_eq "$(git -C "$EXP" rev-parse HEAD)" "$UPSHA" "wt.base is fetched, then used as the start point"
 wt_assert_eq "$(git -C "$EXP" config --get branch.BACK-1/thing.remote || echo none)" "none" "new branch has no upstream"
 
+# a branch that exists only on the remote is checked out at its head, tracking it
+git -C "$UP" checkout -q -b agent/BACK-9/pushed
+git -C "$UP" -c user.email=t@t.t -c user.name=t commit -q --allow-empty -m "agent work"
+git -C "$UP" push -q origin agent/BACK-9/pushed
+AGENTSHA=$(git -C "$UP" rev-parse HEAD)
+wt new agent/BACK-9/pushed "$R" >/dev/null
+AEXP="$R/.claude/worktrees/agent-BACK-9-pushed"
+wt_assert_eq "$(git -C "$AEXP" rev-parse HEAD)" "$AGENTSHA" "remote-only branch starts at the pushed head"
+wt_assert_eq "$(git -C "$AEXP" rev-parse --abbrev-ref '@{upstream}')" "origin/agent/BACK-9/pushed" \
+  "remote-only branch tracks its remote branch"
+wt_assert_eq "$(git -C "$R" branch --show-current)" "main" "main checkout is left on its branch"
+
 # without config: old behaviour, sibling folder, start from HEAD
 D=$(wt_make_repo delta)
 wt new plain "$D" >/dev/null

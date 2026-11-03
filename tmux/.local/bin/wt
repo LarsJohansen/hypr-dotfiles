@@ -11,6 +11,8 @@ usage: wt [-d] [-p <file>] <command>
   close          kill the current window (worktree is left on disk)
   new <branch> [dir]
                  create a worktree at <repo>-worktrees/<branch> and open it.
+                 Uses the local branch if there is one, else the remote's
+                 (tracking it), else a new branch from wt.base.
                  [dir] selects the repo (default: \$PWD) -- a keybinding must
                  pass it, since run-shell does not inherit the pane's cwd
   menu           fzf popup over every worktree; Enter opens it
@@ -130,15 +132,28 @@ wt_new() {
     return 0
   fi
 
+  base=$(wt_cfg "$main" base HEAD)
+  # The remote a branch may already exist on: the one wt.base names
+  # (origin/HEAD -> origin), else origin, else none.
+  remote=${base%%/*}
+  if [ "$remote" = "$base" ] || ! git -C "$main" remote | grep -qx "$remote"; then
+    remote=origin
+    git -C "$main" remote | grep -qx "$remote" || remote=
+  fi
+
   mkdir -p "$wtdir"
   if git -C "$main" show-ref --verify --quiet "refs/heads/$branch"; then
     git -C "$main" worktree add -q "$dir" "$branch"
+  elif [ -n "$remote" ] &&
+    git -C "$main" fetch -q "$remote" "+refs/heads/$branch:refs/remotes/$remote/$branch" 2>/dev/null; then
+    # Someone (an agent, a colleague) already pushed this branch: start at its
+    # head and track it, so plain pull/push work. Without this, the branch was
+    # silently recreated from wt.base and the pushed work was missing.
+    git -C "$main" worktree add -q --track -b "$branch" "$dir" "$remote/$branch"
   else
-    base=$(wt_cfg "$main" base HEAD)
     # origin/HEAD and friends: fetch that remote so the branch starts from
     # what is on the server now, not whenever it was last fetched.
-    remote=${base%%/*}
-    if [ "$remote" != "$base" ] && git -C "$main" remote | grep -qx "$remote"; then
+    if [ "${base%%/*}" = "$remote" ]; then
       git -C "$main" fetch -q "$remote"
     fi
     # --no-track: a branch off origin/<x> would otherwise track it, and a bare
